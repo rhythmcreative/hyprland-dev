@@ -691,25 +691,56 @@ def main():
         else:
             print(json.dumps(POPULAR_LAYOUTS))
     elif cmd in ("available_locales", "available_languages"):
+        out = []
+        seen_locales = set()
+
+        # 1. Primary curated locales (51 from locales.json)
         loc_file = Path.home() / ".config/rhythm/i18n/locales.json"
         if loc_file.exists():
             try:
                 data = json.loads(loc_file.read_text(encoding="utf-8"))
-                out = []
                 for code, item in data.items():
+                    loc = item.get("locale", "")
+                    seen_locales.add(loc.lower())
+                    seen_locales.add(loc.replace(".UTF-8", "").lower())
+                    name_val = item.get("name", code)
                     out.append({
                         "code": code,
-                        "locale": item.get("locale", ""),
-                        "name": item.get("name", ""),
+                        "locale": loc,
+                        "name": name_val,
                         "englishName": item.get("englishName", ""),
-                        "label": f"{item.get('name', code)} ({item.get('locale', '')})",
+                        "label": f"{name_val} ({loc})",
                         "flag": item.get("flag", "🌐")
                     })
-                print(json.dumps(out))
-                return
             except Exception:
                 pass
-        print(json.dumps(POPULAR_LOCALES))
+
+        # 2. All extra locales from locale.gen / hyprland_languages
+        if HAVE_HYPRLAND_LANGUAGES:
+            try:
+                from hyprland_languages.locales import load_all_locales
+                for l in load_all_locales():
+                    clean = l.code.lower()
+                    clean_base = clean.split(".")[0]
+                    if clean in seen_locales or clean_base in seen_locales:
+                        continue
+                    if "utf" in clean:
+                        seen_locales.add(clean)
+                        out.append({
+                            "code": l.lang,
+                            "locale": l.code,
+                            "name": l.lang_name or l.display_name_es,
+                            "englishName": l.lang_en,
+                            "label": l.display_name_es or f"{l.lang_name} ({l.code})",
+                            "flag": l.flag or "🌐"
+                        })
+            except Exception:
+                pass
+
+        if not out:
+            out = POPULAR_LOCALES
+        print(json.dumps(out))
+        return
     elif cmd == "generate_all":
         if HAVE_HYPRLAND_LANGUAGES:
             try:

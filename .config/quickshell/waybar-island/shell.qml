@@ -3458,6 +3458,169 @@ ShellRoot {
                                     }
                                 }
                             }
+
+                            // Buscador de todas las distribuciones XKB (99 disponibles)
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 32
+                                radius: 8
+                                color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.06)
+                                border.width: 1
+                                border.color: layoutSearchInput.activeFocus ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.12)
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 8
+                                    spacing: 6
+
+                                    Text {
+                                        text: "󰍉"
+                                        color: layoutSearchInput.activeFocus ? root.colAccent : root.colMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 11
+                                    }
+
+                                    TextInput {
+                                        id: layoutSearchInput
+                                        Layout.fillWidth: true
+                                        color: root.colFg
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 9
+                                        clip: true
+                                        text: root.layoutSearchQuery
+                                        onTextChanged: root.layoutSearchQuery = text
+
+                                        Text {
+                                            visible: !layoutSearchInput.text && !layoutSearchInput.activeFocus
+                                            text: root.t("lang_search_layout", "Buscar entre todas las 99 distribuciones...")
+                                            color: Qt.rgba(root.colMuted.r, root.colMuted.g, root.colMuted.b, 0.6)
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 9
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+
+                                    Text {
+                                        visible: layoutSearchInput.text.length > 0
+                                        text: "󰅖"
+                                        color: root.colMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 10
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                layoutSearchInput.text = ""
+                                                root.layoutSearchQuery = ""
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Lista de todas las distribuciones disponibles (scrollable)
+                            ListView {
+                                id: allLayoutsListView
+                                Layout.fillWidth: true
+                                implicitHeight: 125
+                                clip: true
+                                spacing: 3
+
+                                model: {
+                                    const all = root.availableLayoutsList || []
+                                    const q = (root.layoutSearchQuery || "").toLowerCase().trim()
+                                    if (!q) return all
+                                    return all.filter(function(item) {
+                                        const code = (item.code || "").toLowerCase()
+                                        const label = (item.label || "").toLowerCase()
+                                        return code.includes(q) || label.includes(q)
+                                    })
+                                }
+
+                                delegate: Rectangle {
+                                    width: allLayoutsListView.width
+                                    height: 32
+                                    radius: 7
+                                    property bool isConfigured: {
+                                        const configured = (root.langStatusData && root.langStatusData.layouts) ? root.langStatusData.layouts : []
+                                        return configured.some(function(c) {
+                                            return (c.code || "").toLowerCase() === (modelData.code || "").toLowerCase()
+                                        })
+                                    }
+
+                                    color: isConfigured ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.08) : (allLayRowHover.hovered ? root.colSurfaceHover : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.03))
+                                    border.width: 1
+                                    border.color: isConfigured ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.3) : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.06)
+
+                                    HoverHandler { id: allLayRowHover }
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 8
+                                        anchors.rightMargin: 8
+                                        spacing: 8
+
+                                        Text {
+                                            text: modelData.flag || "󰌌"
+                                            font.pixelSize: 11
+                                        }
+
+                                        Rectangle {
+                                            width: 32
+                                            height: 18
+                                            radius: 4
+                                            color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: (modelData.code || "").toUpperCase()
+                                                color: root.colAccent
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
+                                            }
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.label || modelData.code || ""
+                                            color: root.colFg
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 9
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Rectangle {
+                                            width: isConfigured ? 65 : 55
+                                            height: 22
+                                            radius: 5
+                                            color: isConfigured ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.2) : (addBtnHover.hovered ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1))
+                                            Behavior on color { ColorAnimation { duration: 100 } }
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: isConfigured ? "✓ " + root.t("lang_added", "Añadido") : "+ " + root.t("lang_add", "Añadir")
+                                                color: isConfigured ? root.colAccent : (addBtnHover.hovered ? root.colBg : root.colFg)
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
+                                            }
+
+                                            HoverHandler { id: addBtnHover; enabled: !isConfigured }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: isConfigured ? Qt.ArrowCursor : Qt.PointingHandCursor
+                                                enabled: !isConfigured
+                                                onClicked: {
+                                                    root.runCmd("$HOME/.local/bin/notch-language-helper add " + modelData.code)
+                                                    langRefreshTimer.restart()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         // ── TAB 1: IDIOMAS (Omarchy 51 Locales) ──

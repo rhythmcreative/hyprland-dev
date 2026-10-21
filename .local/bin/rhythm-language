@@ -13,7 +13,13 @@ ENV_LOCALE="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d/10-locale.conf"
 generator="rhythm-locale-generate"
 
 known_language() {
-    [ -f "$LOCALES_JSON" ] && jq -e --arg code "$1" 'has($code)' "$LOCALES_JSON" >/dev/null 2>&1
+    local code="$1"
+    [ -f "$LOCALES_JSON" ] && jq -e --arg code "$code" 'has($code)' "$LOCALES_JSON" >/dev/null 2>&1 && return 0
+    if [[ "$code" == *"."* ]] || [[ "$code" == *"_"* ]]; then
+        grep -q "^#\?${code%%.*}" /etc/locale.gen 2>/dev/null && return 0
+        locale -a 2>/dev/null | grep -qi "^${code%%.*}" && return 0
+    fi
+    return 1
 }
 
 current_language() {
@@ -31,22 +37,41 @@ current_language() {
 locale_for() {
     local code="$1"
     if [ -f "$LOCALES_JSON" ]; then
-        jq -r --arg code "$code" '.[$code].locale // empty' "$LOCALES_JSON"
+        local l
+        l=$(jq -r --arg code "$code" '.[$code].locale // empty' "$LOCALES_JSON" 2>/dev/null)
+        if [ -n "$l" ]; then
+            echo "$l"
+            return
+        fi
     fi
+    if [[ "$code" == *"."* ]]; then
+        echo "$code"
+        return
+    elif [[ "$code" == *"_"* ]]; then
+        echo "${code}.UTF-8"
+        return
+    fi
+    echo "${code}_${code^^}.UTF-8"
 }
 
 name_for() {
     local code="$1"
     if [ -f "$LOCALES_JSON" ]; then
-        jq -r --arg code "$code" '.[$code].name // empty' "$LOCALES_JSON"
+        local n
+        n=$(jq -r --arg code "$code" '.[$code].name // empty' "$LOCALES_JSON" 2>/dev/null)
+        [ -n "$n" ] && echo "$n" && return
     fi
+    echo "$code"
 }
 
 flag_for() {
     local code="$1"
     if [ -f "$LOCALES_JSON" ]; then
-        jq -r --arg code "$code" '.[$code].flag // "🌐"' "$LOCALES_JSON"
+        local f
+        f=$(jq -r --arg code "$code" '.[$code].flag // empty' "$LOCALES_JSON" 2>/dev/null)
+        [ -n "$f" ] && echo "$f" && return
     fi
+    echo "🌐"
 }
 
 list_languages() {
