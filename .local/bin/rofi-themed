@@ -26,9 +26,36 @@
 # el contenido cambia.
 "$HOME/.local/bin/rofi-colors" 2>/dev/null || true
 
+# Sincronizar dinamicamente con el idioma activo del sistema (Rhythm / Omarchy)
+if [ -f "$HOME/.config/environment.d/10-locale.conf" ]; then
+    . "$HOME/.config/environment.d/10-locale.conf"
+    export LANG LC_MESSAGES LANGUAGE
+fi
+
+active_lang="es"
+if [ -f "$HOME/.config/rhythm/language" ]; then
+    active_lang=$(head -n 1 "$HOME/.config/rhythm/language" 2>/dev/null | tr -d '[:space:]')
+fi
+
+# Placeholder localizado segun idioma activo
+placeholder_text="Buscar aplicaciones..."
+case "$active_lang" in
+    es|es-*)   placeholder_text="Buscar aplicaciones..." ;;
+    en|en-*)   placeholder_text="Search apps..." ;;
+    fr|fr-*)   placeholder_text="Rechercher des applications..." ;;
+    de|de-*)   placeholder_text="Apps durchsuchen..." ;;
+    it|it-*)   placeholder_text="Cerca applicazioni..." ;;
+    pt|pt-*)   placeholder_text="Pesquisar aplicações..." ;;
+    ru|ru-*)   placeholder_text="Поиск приложений..." ;;
+    ja|ja-*)   placeholder_text="アプリを検索..." ;;
+    zh|zh-*)   placeholder_text="搜索应用程序..." ;;
+    fi|fi-*)   placeholder_text="Etsi sovelluksia..." ;;
+    *)         placeholder_text="Search apps..." ;;
+esac
+
 # Asegurar locale UTF-8 valido para evitar que rofi falle con 'Failed to set locale'
 if ! locale >/dev/null 2>&1; then
-    export LC_ALL="C.UTF-8"
+    export LC_ALL="${LANG:-C.UTF-8}"
 fi
 
 # Limpiar pidfile huerfano o conmutar rofi si ya esta abierto
@@ -82,6 +109,19 @@ sin_efectos() {
 
 if sin_efectos && [ -f "$macizo" ]; then
     args+=(-theme-str "$(cat "$macizo")")
+fi
+
+# Aplicar placeholder localizado a lanzadores de aplicaciones
+is_app_launcher=false
+for a in "$@"; do
+    if [ "$a" = "drun" ] || [ "$a" = "-show" ] || [ "$a" = "run" ]; then
+        is_app_launcher=true
+        break
+    fi
+done
+
+if $is_app_launcher && [ -n "$placeholder_text" ]; then
+    args+=(-theme-str "entry { placeholder: \"$placeholder_text\"; }")
 fi
 
 exec rofi "${args[@]}"
