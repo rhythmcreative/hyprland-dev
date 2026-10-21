@@ -79,21 +79,28 @@ generate_locale() {
 apply_session_locale() {
     local locale="$1"
     mkdir -p "$(dirname "$SESSION_ENV")"
-    printf '# The session language, set by rhythm-language\nexport LANG=%s\nexport LC_MESSAGES=%s\n' "$locale" "$locale" > "$SESSION_ENV"
+    printf '# The session language, set by rhythm-language\nexport LANG=%s\nexport LC_MESSAGES=%s\nexport LANGUAGE=%s\n' "$locale" "$locale" "$locale" > "$SESSION_ENV"
 
     mkdir -p "$(dirname "$ENV_LOCALE")"
-    printf 'LANG="%s"\nLC_MESSAGES="%s"\n' "$locale" "$locale" > "$ENV_LOCALE"
+    printf 'LANG="%s"\nLC_MESSAGES="%s"\nLANGUAGE="%s"\n' "$locale" "$locale" "$locale" > "$ENV_LOCALE"
+
+    # Update systemd-localed if available
+    command -v localectl >/dev/null 2>&1 && localectl set-locale "LANG=$locale" "LC_MESSAGES=$locale" >/dev/null 2>&1 || true
 
     if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
         hyprctl setenv LANG "$locale" >/dev/null 2>&1 || true
+        hyprctl setenv LC_MESSAGES "$locale" >/dev/null 2>&1 || true
+        hyprctl setenv LANGUAGE "$locale" >/dev/null 2>&1 || true
         hyprctl eval "hl.env(\"LANG\", \"$locale\", true)" >/dev/null 2>&1 || true
+        hyprctl eval "hl.env(\"LC_MESSAGES\", \"$locale\", true)" >/dev/null 2>&1 || true
+        hyprctl eval "hl.env(\"LANGUAGE\", \"$locale\", true)" >/dev/null 2>&1 || true
     fi
 
     if command -v systemctl >/dev/null 2>&1; then
-        systemctl --user import-environment LANG LC_MESSAGES >/dev/null 2>&1 || true
+        systemctl --user import-environment LANG LC_MESSAGES LANGUAGE >/dev/null 2>&1 || true
     fi
     if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-        dbus-update-activation-environment --systemd LANG LC_MESSAGES >/dev/null 2>&1 || true
+        dbus-update-activation-environment --systemd LANG LC_MESSAGES LANGUAGE >/dev/null 2>&1 || true
     fi
 }
 

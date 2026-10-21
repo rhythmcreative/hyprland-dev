@@ -945,6 +945,17 @@ ShellRoot {
             langStatusProc.running = true
             return "reloaded"
         }
+        function debug(): string {
+            return JSON.stringify({
+                activeLanguage: root.activeLanguage,
+                catalogPath: catalogFile.path,
+                catalogLoaded: catalogFile.loaded,
+                catalogTextLen: catalogFile.text().length,
+                keysCount: Object.keys(root._i18nStrings || {}).length,
+                tab_control: root.t("tab_control", "FALLBACK_CONTROL"),
+                sysmon_title: root.t("sysmon_title", "FALLBACK_TITLE")
+            })
+        }
     }
 
     // Live pywal colors
