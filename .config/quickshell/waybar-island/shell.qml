@@ -864,7 +864,7 @@ ShellRoot {
             if (panel) panel.langExpanded = false
             return "collapsed"
         }
-        function reloadLanguage(): string {
+        function reloadLanguage(screenName: string): string {
             langFile.reload()
             catalogFile.reload()
             enCatalogFile.reload()
@@ -872,6 +872,9 @@ ShellRoot {
             availableLocalesProc.running = true
             availableLayoutsProc.running = true
             return "reloaded"
+        }
+        function refreshLanguages(screenName: string): string {
+            return reloadLanguage(screenName)
         }
         function collapse(screenName: string): string {
             if (!screenName || screenName === "" || screenName === "all") {
@@ -1200,6 +1203,19 @@ ShellRoot {
                     if (Array.isArray(d)) root.availableLayoutsList = d
                 } catch(e) {}
             }
+        }
+    }
+
+    Timer {
+        id: langRefreshTimer
+        interval: 180
+        repeat: false
+        onTriggered: {
+            langStatusProc.running = true
+            availableLocalesProc.running = true
+            availableLayoutsProc.running = true
+            langFile.reload()
+            catalogFile.reload()
         }
     }
 
@@ -3220,6 +3236,30 @@ ShellRoot {
                                     border.color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
                                     Behavior on color { ColorAnimation { duration: 120 } }
 
+                                    HoverHandler { id: layRowHover }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            root.kbLayout = modelData.code_upper
+                                            let cur = root.langStatusData
+                                            if (cur && cur.layouts) {
+                                                let updated = cur.layouts.map(function(l) {
+                                                    let copy = Object.assign({}, l)
+                                                    copy.active = (l.id === modelData.id)
+                                                    return copy
+                                                })
+                                                cur.layouts = updated
+                                                cur.active_index = modelData.id
+                                                cur.active_code = modelData.code_upper
+                                                root.langStatusData = Object.assign({}, cur)
+                                            }
+                                            root.runCmd("$HOME/.local/bin/notch-language-helper switch " + modelData.id)
+                                            langRefreshTimer.restart()
+                                        }
+                                    }
+
                                     RowLayout {
                                         anchors.fill: parent
                                         anchors.leftMargin: 12
@@ -3273,6 +3313,7 @@ ShellRoot {
 
                                         // Eliminar layout (solo si hay más de 1)
                                         Rectangle {
+                                            z: 5
                                             visible: !modelData.active && (root.langStatusData?.layouts?.length || 0) > 1
                                             width: 22
                                             height: 22
@@ -3290,19 +3331,10 @@ ShellRoot {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    root.runCmd("$HOME/.local/bin/notch-language-helper remove " + modelData.id + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
+                                                    root.runCmd("$HOME/.local/bin/notch-language-helper remove " + modelData.id)
+                                                    langRefreshTimer.restart()
                                                 }
                                             }
-                                        }
-                                    }
-
-                                    HoverHandler { id: layRowHover }
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            root.runCmd("$HOME/.local/bin/notch-language-helper switch " + modelData.id + " && sleep 0.08 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
-                                            root.kbLayout = modelData.code_upper
                                         }
                                     }
                                 }
@@ -3356,7 +3388,8 @@ ShellRoot {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    root.runCmd("$HOME/.local/bin/notch-language-helper add " + modelData.code + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
+                                                    root.runCmd("$HOME/.local/bin/notch-language-helper add " + modelData.code)
+                                                    langRefreshTimer.restart()
                                                 }
                                             }
                                         }
@@ -3462,6 +3495,24 @@ ShellRoot {
                                     border.color: isCurrent ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
                                     Behavior on color { ColorAnimation { duration: 120 } }
 
+                                    HoverHandler { id: locRowHover }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            let code = modelData.code
+                                            root.activeLanguage = code
+                                            let cur = root.langStatusData
+                                            if (cur) {
+                                                cur.user_locale = modelData.locale || cur.user_locale
+                                                root.langStatusData = Object.assign({}, cur)
+                                            }
+                                            root.runCmd("$HOME/.local/bin/rhythm-language set " + code)
+                                            langRefreshTimer.restart()
+                                        }
+                                    }
+
                                     RowLayout {
                                         anchors.fill: parent
                                         anchors.leftMargin: 12
@@ -3520,18 +3571,6 @@ ShellRoot {
                                             font.weight: Font.Bold
                                         }
                                     }
-
-                                    HoverHandler { id: locRowHover }
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            let code = modelData.code
-                                            root.activeLanguage = code
-                                            root.runCmd("$HOME/.local/bin/rhythm-language set " + code)
-                                            islandWin.langExpanded = false
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -3567,6 +3606,22 @@ ShellRoot {
                                     border.color: isSelected ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
                                     Behavior on color { ColorAnimation { duration: 120 } }
 
+                                    HoverHandler { id: hkRowHover }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            let cur = root.langStatusData
+                                            if (cur) {
+                                                cur.hotkey_option = modelData.option
+                                                root.langStatusData = Object.assign({}, cur)
+                                            }
+                                            root.runCmd("$HOME/.local/bin/notch-language-helper set_hotkey " + modelData.option)
+                                            langRefreshTimer.restart()
+                                        }
+                                    }
+
                                     RowLayout {
                                         anchors.fill: parent
                                         anchors.leftMargin: 12
@@ -3592,19 +3647,9 @@ ShellRoot {
                                             font.weight: Font.Bold
                                         }
                                     }
-
-                                    HoverHandler { id: hkRowHover }
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            root.runCmd("$HOME/.local/bin/notch-language-helper set_hotkey " + modelData.option + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
-                                        }
-                                    }
                                 }
                             }
-                        }
-                    }
+                        }                    }
 
                     // 4. Footer info
                     RowLayout {
@@ -5738,7 +5783,8 @@ ShellRoot {
                                             root.runCmd("~/.local/bin/toggle-keyboard-layout")
                                             kbProc.running = true
                                         } else {
-                                            islandWin.controlSubView = 8
+                                            islandWin.expanded = false
+                                            islandWin.langExpanded = true
                                             langStatusProc.running = true
                                             availableLocalesProc.running = true
                                             availableLayoutsProc.running = true
