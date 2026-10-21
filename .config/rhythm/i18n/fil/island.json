@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Mga Shortcut",
-  "lang_active": "Aktibo ngayon"
+  "lang_active": "Aktibo ngayon",
+  "lock_placeholder": "Ilagay ang password...",
+  "lock_fail": "Maling password",
+  "lock_welcome": "Maligayang pagbabalik, $USER"
 }

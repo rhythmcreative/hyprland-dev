@@ -235,5 +235,8 @@
   "lang_quick_add": "إضافة توزيعة سريعة:",
   "lang_search_placeholder": "البحث عن لغة...",
   "lang_switch_hotkey_title": "اختصار تبديل اللوحة:",
-  "lang_available_count": "لغة مدعومة"
+  "lang_available_count": "لغة مدعومة",
+  "lock_placeholder": "أدخل كلمة المرور...",
+  "lock_fail": "كلمة المرور غير صحيحة",
+  "lock_welcome": "مرحباً بعودتك، $USER"
 }

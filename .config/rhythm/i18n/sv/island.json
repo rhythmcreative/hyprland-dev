@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Genvägar",
-  "lang_active": "Aktivt nu"
+  "lang_active": "Aktivt nu",
+  "lock_placeholder": "Ange lösenord...",
+  "lock_fail": "Felaktigt lösenord",
+  "lock_welcome": "Välkommen tillbaka, $USER"
 }

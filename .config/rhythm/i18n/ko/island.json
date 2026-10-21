@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "단축키",
-  "lang_active": "현재 활성"
+  "lang_active": "현재 활성",
+  "lock_placeholder": "비밀번호를 입력하세요...",
+  "lock_fail": "비밀번호가 올바르지 않습니다",
+  "lock_welcome": "다시 오신 것을 환영합니다, $USER"
 }

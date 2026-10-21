@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Aicearraí",
-  "lang_active": "Gníomhach anois"
+  "lang_active": "Gníomhach anois",
+  "lock_placeholder": "Cuir isteach focal faire...",
+  "lock_fail": "Focal faire mícheart",
+  "lock_welcome": "Fáilte ar ais, $USER"
 }

@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Comenzi rapide",
-  "lang_active": "Activ acum"
+  "lang_active": "Activ acum",
+  "lock_placeholder": "Introduceți parola...",
+  "lock_fail": "Parolă incorectă",
+  "lock_welcome": "Bine ați revenit, $USER"
 }

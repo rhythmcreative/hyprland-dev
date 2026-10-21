@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Pikanäppäimet",
-  "lang_active": "Aktiivinen nyt"
+  "lang_active": "Aktiivinen nyt",
+  "lock_placeholder": "Kirjoita salasana...",
+  "lock_fail": "Väärä salasana",
+  "lock_welcome": "Tervetuloa takaisin, $USER"
 }

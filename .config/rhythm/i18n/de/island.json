@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Tastenkürzel",
-  "lang_active": "Jetzt aktiv"
+  "lang_active": "Jetzt aktiv",
+  "lock_placeholder": "Passwort eingeben...",
+  "lock_fail": "Falsches Passwort",
+  "lock_welcome": "Willkommen zurück, $USER"
 }

@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Īsceļi",
-  "lang_active": "Pašlaik aktīvs"
+  "lang_active": "Pašlaik aktīvs",
+  "lock_placeholder": "Ievadiet paroli...",
+  "lock_fail": "Nepareiza parole",
+  "lock_welcome": "Laipni lūdzam atpakaļ, $USER"
 }

@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Snarveier",
-  "lang_active": "Aktivt nå"
+  "lang_active": "Aktivt nå",
+  "lock_placeholder": "Skriv inn passord...",
+  "lock_fail": "Feil passord",
+  "lock_welcome": "Velkommen tilbake, $USER"
 }
