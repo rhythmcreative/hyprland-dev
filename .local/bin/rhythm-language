@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# rhythm-language: Manage active language for Hyprland, Quickshell and user environment
+# Fully compatible with Omarchy's language architecture.
+
+set -euo pipefail
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rhythm"
+LANG_FILE="$CONFIG_DIR/language"
+LOCALES_JSON="${RHYTHM_LOCALES_JSON:-$CONFIG_DIR/i18n/locales.json}"
+SESSION_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/uwsm/env.d/50-rhythm-language"
+ENV_LOCALE="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d/10-locale.conf"
+
+generator="rhythm-locale-generate"
+
+known_language() {
+    [ -f "$LOCALES_JSON" ] && jq -e --arg code "$1" 'has($code)' "$LOCALES_JSON" >/dev/null 2>&1
+}
+
+current_language() {
+    local code=""
+    if [[ -f "$LANG_FILE" ]]; then
+        code=$(head -n 1 "$LANG_FILE" | tr -d '[:space:]')
+    fi
+    if [[ -n "$code" ]] && known_language "$code"; then
+        echo "$code"
+    else
+        echo "es"
+    fi
+}
+
+locale_for() {
+    local code="$1"
+    if [ -f "$LOCALES_JSON" ]; then
+        jq -r --arg code "$code" '.[$code].locale // empty' "$LOCALES_JSON"
+    fi
+}
+
+name_for() {
+    local code="$1"
+    if [ -f "$LOCALES_JSON" ]; then
+        jq -r --arg code "$code" '.[$code].name // empty' "$LOCALES_JSON"
+    fi
+}
+
+flag_for() {
+    local code="$1"
+    if [ -f "$LOCALES_JSON" ]; then
+        jq -r --arg code "$code" '.[$code].flag // "🌐"' "$LOCALES_JSON"
+    fi
+}
+
+list_languages() {
+    if [ -f "$LOCALES_JSON" ]; then
+        jq -r '
+            to_entries
+            | map({code: .key, name: .value.name, englishName: .value.englishName, flag: .value.flag, locale: .value.locale})
+            | sort_by(if .code == "es" then "0" elif .code == "en" then "1" else .englishName end)
+            | .[]
+            | [.name, .code, .englishName, .flag, .locale] | @tsv
+        ' "$LOCALES_JSON"
+    fi
+}
+
+locale_generated() {
+    local want available
+    want=$(echo "$1" | tr -cd 'a-zA-Z0-9' | tr '[:upper:]' '[:lower:]')
+    available=" $(locale -a 2>/dev/null | tr -cd 'a-zA-Z0-9\n' | tr '[:upper:]' '[:lower:]' | tr '\n' ' ') "
+    [[ $available == *" $want "* ]]
+}
+
+generate_locale() {
+    local code="$1" locale="$2"
+    locale_generated "$locale" && return 0
+
+    if (( EUID == 0 )); then
+        "$generator" "$code"
+    elif sudo -n true 2>/dev/null; then
+        sudo "$generator" "$code"
+    elif command -v pkexec >/dev/null 2>&1; then
+        pkexec "$generator" "$code"
+    else
+        sudo "$generator" "$code"
+    fi
+}
+
+apply_session_locale() {
+    local locale="$1"
+    mkdir -p "$(dirname "$SESSION_ENV")"
+    printf '# The session language, set by rhythm-language\nexport LANG=%s\nexport LC_MESSAGES=%s\n' "$locale" "$locale" > "$SESSION_ENV"
+
+    mkdir -p "$(dirname "$ENV_LOCALE")"
+    printf 'LANG="%s"\nLC_MESSAGES="%s"\n' "$locale" "$locale" > "$ENV_LOCALE"
+
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+        hyprctl setenv LANG "$locale" >/dev/null 2>&1 || true
+        hyprctl eval "hl.env(\"LANG\", \"$locale\", true)" >/dev/null 2>&1 || true
+    fi
+
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user import-environment LANG LC_MESSAGES >/dev/null 2>&1 || true
+    fi
+    if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+        dbus-update-activation-environment --systemd LANG LC_MESSAGES >/dev/null 2>&1 || true
+    fi
+}
+
+notify_quickshell() {
+    local code="$1"
+    local qs_path="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/waybar-island/shell.qml"
+    quickshell ipc -p "$qs_path" --any-display call island reloadLanguage "" >/dev/null 2>&1 || true
+    quickshell ipc -p "$qs_path" --any-display call island refreshLanguages "" >/dev/null 2>&1 || true
+    quickshell ipc -p "$qs_path" --any-display call language set "$code" >/dev/null 2>&1 || true
+}
+
+set_language() {
+    local code="$1"
+    if ! known_language "$code"; then
+        echo "Usage: rhythm-language [<code>|set <code>|list|locale [<code>]|toggle]" >&2
+        echo "Unknown language code: $code" >&2
+        echo "Run 'rhythm-language list' to see available codes." >&2
+        exit 1
+    fi
+
+    local locale name flag
+    locale=$(locale_for "$code")
+    name=$(name_for "$code")
+    flag=$(flag_for "$code")
+
+    generate_locale "$code" "$locale"
+
+    mkdir -p "$CONFIG_DIR"
+    echo "$code" > "$LANG_FILE"
+
+    # Also keep omarchy compatibility path
+    mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy"
+    echo "$code" > "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/language"
+
+    apply_session_locale "$locale"
+    notify_quickshell "$code"
+
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send -a "Language" -i "preferences-desktop-locale" "Language Changed" "Switched to $flag $name ($locale)" -t 2500 2>/dev/null || true
+    fi
+    echo "Switched language to: $flag $name ($code, $locale)"
+}
+
+toggle_language() {
+    local curr
+    curr=$(current_language)
+    if [ "$curr" = "es" ]; then
+        set_language "en"
+    else
+        set_language "es"
+    fi
+}
+
+case "${1:-}" in
+    "")
+        current_language
+        ;;
+    list)
+        list_languages
+        ;;
+    locale)
+        code=${2:-$(current_language)}
+        if ! known_language "$code"; then
+            echo "Unknown language code: $code" >&2
+            exit 1
+        fi
+        locale_for "$code"
+        ;;
+    set)
+        set_language "${2:-}"
+        ;;
+    toggle)
+        toggle_language
+        ;;
+    *)
+        set_language "$1"
+        ;;
+esac

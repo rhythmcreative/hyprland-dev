@@ -1,0 +1,35 @@
+#!/bin/bash
+# rhythm-locale-generate: Generate system locale for a given language code
+# Omarchy-compatible helper
+set -euo pipefail
+
+if (( EUID == 0 )); then
+  export PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+fi
+
+registry=${RHYTHM_LOCALES_JSON:-${XDG_CONFIG_HOME:-$HOME/.config}/rhythm/i18n/locales.json}
+locale_gen=/etc/locale.gen
+
+code=${1:-}
+if (( $# != 1 )) || [[ ! $code =~ ^[a-z]{2,3}(-[A-Za-z]{2})?$ ]]; then
+  echo "Usage: rhythm-locale-generate <code>" >&2
+  exit 1
+fi
+
+if [ ! -f "$registry" ]; then
+  registry="/home/rhythmcreative/.config/rhythm/i18n/locales.json"
+fi
+
+locale=$(jq -r --arg code "$code" '.[$code].locale // empty' "$registry" 2>/dev/null || true)
+if [[ ! $locale =~ ^[a-z]{2,3}_[A-Z]{2}\.UTF-8$ ]]; then
+  echo "Unknown language code: $code" >&2
+  exit 1
+fi
+
+base=${locale%.UTF-8}
+if grep -qE "^#$base(\.UTF-8)? UTF-8" "$locale_gen" 2>/dev/null; then
+  sed -i -E "s/^#($base(\.UTF-8)? UTF-8)/\1/" "$locale_gen"
+elif ! grep -qE "^$base(\.UTF-8)? UTF-8" "$locale_gen" 2>/dev/null; then
+  echo "$locale UTF-8" >>"$locale_gen"
+fi
+locale-gen "$locale" >/dev/null

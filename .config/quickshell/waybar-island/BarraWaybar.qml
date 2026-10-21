@@ -834,8 +834,18 @@ print(f\"{bars}|{overall_pct}\")
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        barWin.run("$HOME/.local/bin/notch-language-helper switch 2>/dev/null || $HOME/.local/bin/toggle-keyboard-layout 2>/dev/null || hyprctl switchxkblayout all next")
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function(mouse) {
+                        let scrName = (barWin.screen && barWin.screen.name) ? barWin.screen.name : ""
+                        if (mouse.button === Qt.RightButton) {
+                            barWin.run("$HOME/.local/bin/notch-language-helper switch 2>/dev/null || $HOME/.local/bin/toggle-keyboard-layout 2>/dev/null || hyprctl switchxkblayout all next")
+                        } else {
+                            if (barWin.islandRoot && typeof barWin.islandRoot.toggleLanguage === "function") {
+                                barWin.islandRoot.toggleLanguage(scrName)
+                            } else {
+                                barWin.run("quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island toggleLanguage '" + scrName + "' || quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island openLanguage '" + scrName + "'")
+                            }
+                        }
                     }
                 }
             }

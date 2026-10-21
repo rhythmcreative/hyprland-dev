@@ -516,6 +516,28 @@ def set_user_locale(loc):
     except Exception:
         pass
 
+    # Save to rhythm and omarchy language files
+    lang_code = clean_loc.split("_")[0].split(".")[0].lower()
+    for cfg_dir in [Path.home() / ".config/rhythm", Path.home() / ".config/omarchy"]:
+        try:
+            cfg_dir.mkdir(parents=True, exist_ok=True)
+            (cfg_dir / "language").write_text(f"{lang_code}\n", encoding="utf-8")
+        except Exception:
+            pass
+
+    uwsm_dir = Path.home() / ".config/uwsm/env.d"
+    try:
+        uwsm_dir.mkdir(parents=True, exist_ok=True)
+        (uwsm_dir / "50-rhythm-language").write_text(f'export LANG="{clean_loc}"\nexport LC_MESSAGES="{clean_loc}"\n', encoding="utf-8")
+    except Exception:
+        pass
+
+    hypr_eval(f'hl.env("LANG", "{clean_loc}", true)')
+    try:
+        subprocess.run(["hyprctl", "setenv", "LANG", clean_loc], capture_output=True, timeout=1)
+    except Exception:
+        pass
+
     try:
         label = next((l["label"] for l in POPULAR_LOCALES if l["locale"] == clean_loc), clean_loc)
         subprocess.run(["notify-send", "-a", "Language Settings", "-i", "preferences-desktop-locale", "User language updated", f"{label}\nWill take full effect after restarting your session."], capture_output=True, timeout=2)
@@ -576,7 +598,8 @@ def set_system_locale(loc):
 def notify_quickshell():
     qs_path = str(Path.home() / ".config/quickshell/waybar-island/shell.qml")
     for cmd in [
-        ["quickshell", "-p", qs_path, "ipc", "call", "island", "reloadLanguage", ""],
+        ["quickshell", "ipc", "-p", qs_path, "--any-display", "call", "island", "reloadLanguage", ""],
+        ["quickshell", "ipc", "-p", qs_path, "--any-display", "call", "island", "refreshLanguages", ""],
         ["quickshell", "ipc", "-c", "waybar-island", "call", "island", "reloadLanguage", ""]
     ]:
         try:
