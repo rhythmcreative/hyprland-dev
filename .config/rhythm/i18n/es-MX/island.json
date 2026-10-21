@@ -228,5 +228,8 @@
   "lang_switch_shortcut": "Atajo de Cambio de Teclado",
   "lang_shortcut_desc": "Alterna entre distribuciones con un atajo",
   "lang_applied": "Activo",
-  "lang_requires_restart": "Los cambios se aplican a las nuevas aplicaciones"
+  "lang_requires_restart": "Los cambios se aplican a las nuevas aplicaciones",
+  "lock_placeholder": "Ingresa la contraseña...",
+  "lock_fail": "Contraseña incorrecta",
+  "lock_welcome": "Bienvenido de nuevo, $USER"
 }

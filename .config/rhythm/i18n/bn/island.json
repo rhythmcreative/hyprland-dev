@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "শর্টকাট",
-  "lang_active": "বর্তমানে সক্রিয়"
+  "lang_active": "বর্তমানে সক্রিয়",
+  "lock_placeholder": "পাসওয়ার্ড লিখুন...",
+  "lock_fail": "ভুল পাসওয়ার্ড",
+  "lock_welcome": "স্বাগতম, $USER"
 }

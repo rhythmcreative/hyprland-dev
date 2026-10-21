@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Pintasan",
-  "lang_active": "Aktif sekarang"
+  "lang_active": "Aktif sekarang",
+  "lock_placeholder": "Masukkan kata laluan...",
+  "lock_fail": "Kata laluan salah",
+  "lock_welcome": "Selamat kembali, $USER"
 }

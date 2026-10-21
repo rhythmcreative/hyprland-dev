@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Atalhos",
-  "lang_active": "Ativo agora"
+  "lang_active": "Ativo agora",
+  "lock_placeholder": "Introduza a palavra-passe...",
+  "lock_fail": "Palavra-passe incorreta",
+  "lock_welcome": "Bem-vindo de volta, $USER"
 }

@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "快捷键",
-  "lang_active": "当前活跃"
+  "lang_active": "当前活跃",
+  "lock_placeholder": "请输入密码...",
+  "lock_fail": "密码错误",
+  "lock_welcome": "欢迎回来，$USER"
 }

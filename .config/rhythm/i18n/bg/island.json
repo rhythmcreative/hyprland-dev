@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Преки пътища",
-  "lang_active": "Активен сега"
+  "lang_active": "Активен сега",
+  "lock_placeholder": "Въведете парола...",
+  "lock_fail": "Грешна парола",
+  "lock_welcome": "Добре дошли отново, $USER"
 }

@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Dreceres",
-  "lang_active": "Actiu ara"
+  "lang_active": "Actiu ara",
+  "lock_placeholder": "Introdueix la contrasenya...",
+  "lock_fail": "Contrasenya incorrecta",
+  "lock_welcome": "Benvingut de nou, $USER"
 }

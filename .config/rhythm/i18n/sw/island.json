@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Njia za Mkato",
-  "lang_active": "Inayotumika sasa"
+  "lang_active": "Inayotumika sasa",
+  "lock_placeholder": "Weka nenosiri...",
+  "lock_fail": "Nenosiri si sahihi",
+  "lock_welcome": "Karibu tena, $USER"
 }

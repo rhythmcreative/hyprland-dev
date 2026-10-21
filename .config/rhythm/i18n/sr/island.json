@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Пречице",
-  "lang_active": "Тренутно активно"
+  "lang_active": "Тренутно активно",
+  "lock_placeholder": "Унесите лозинку...",
+  "lock_fail": "Нетачна лозинка",
+  "lock_welcome": "Добродошли назад, $USER"
 }

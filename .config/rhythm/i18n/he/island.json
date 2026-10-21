@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "מקשי קיצור",
-  "lang_active": "פעיל כעת"
+  "lang_active": "פעיל כעת",
+  "lock_placeholder": "הזן סיסמה...",
+  "lock_fail": "סיסמה שגויה",
+  "lock_welcome": "ברוך שובך, $USER"
 }

@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Гарячі клавіші",
-  "lang_active": "Зараз активна"
+  "lang_active": "Зараз активна",
+  "lock_placeholder": "Введіть пароль...",
+  "lock_fail": "Невірний пароль",
+  "lock_welcome": "З поверненням, $USER"
 }

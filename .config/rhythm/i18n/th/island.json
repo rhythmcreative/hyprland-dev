@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "ปุ่มลัด",
-  "lang_active": "ใช้งานอยู่ขณะนี้"
+  "lang_active": "ใช้งานอยู่ขณะนี้",
+  "lock_placeholder": "กรุณาใส่รหัสผ่าน...",
+  "lock_fail": "รหัสผ่านไม่ถูกต้อง",
+  "lock_welcome": "ยินดีต้อนรับกลับ, $USER"
 }

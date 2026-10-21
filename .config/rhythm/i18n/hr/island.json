@@ -230,5 +230,8 @@
   "lang_applied": "Active",
   "lang_requires_restart": "Changes apply to newly launched applications",
   "lang_tab_hotkeys": "Prečaci",
-  "lang_active": "Aktivno sada"
+  "lang_active": "Aktivno sada",
+  "lock_placeholder": "Unesite lozinku...",
+  "lock_fail": "Netočna lozinka",
+  "lock_welcome": "Dobrodošli natrag, $USER"
 }
