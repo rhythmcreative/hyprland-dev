@@ -180,6 +180,7 @@ set_language() {
         sk) kb_map="sk" ;;
         hr) kb_map="hr" ;;
         sl) kb_map="si" ;;
+        sr) kb_map="rs" ;;
         et) kb_map="ee" ;;
         lv) kb_map="lv" ;;
         lt) kb_map="lt" ;;
