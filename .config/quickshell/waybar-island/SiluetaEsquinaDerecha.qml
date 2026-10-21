@@ -26,17 +26,17 @@ Shape {
         readonly property real g: Math.max(0, Math.min(siluetaEsquinaDerecha.ala, trazo.h / 3, trazo.w / 6))
         readonly property real r: Math.max(0, Math.min(siluetaEsquinaDerecha.cuerpoRadio, trazo.h / 2, trazo.w / 3 - trazo.g))
 
-        // Start at absolute top-right screen corner (w, 0)
+        // Inicia en la esquina superior derecha absoluta (w, 0)
         startX: trazo.w
         startY: 0
 
-        // 1. Flush down along right screen bezel to right wing tip
+        // 1. Línea recta hacia abajo a lo largo del bisel derecho de la pantalla
         PathLine {
             x: trazo.w
             y: trazo.h
         }
 
-        // 2. Inverted concave wing fusing into right screen bezel
+        // 2. Ala cóncava inferior que se funde con el bisel derecho
         PathArc {
             x: trazo.w - trazo.g
             y: Math.max(0, trazo.h - trazo.g)
@@ -45,28 +45,28 @@ Shape {
             direction: PathArc.Counterclockwise
         }
 
-        // 3. Bottom edge to bottom-left corner start
+        // 3. Borde inferior horizontal hacia la izquierda
         PathLine {
-            x: Math.min(trazo.w - trazo.g, trazo.g + trazo.r)
+            x: trazo.g + trazo.r
             y: Math.max(0, trazo.h - trazo.g)
         }
 
-        // 4. Smooth rounded bottom-left corner
+        // 4. Esquina redondeada inferior izquierda
         PathArc {
             x: trazo.g
             y: Math.max(0, trazo.h - trazo.g - trazo.r)
             radiusX: trazo.r
             radiusY: trazo.r
-            direction: PathArc.Counterclockwise
+            direction: PathArc.Clockwise
         }
 
-        // 5. Left vertical edge up to top wing start
+        // 5. Borde vertical izquierdo subiendo hacia el ala superior
         PathLine {
             x: trazo.g
             y: Math.min(trazo.h, trazo.g)
         }
 
-        // 6. Inverted concave wing fusing into top screen bezel
+        // 6. Ala cóncava superior que se funde con el bisel superior de la pantalla
         PathArc {
             x: 0
             y: 0
@@ -75,7 +75,7 @@ Shape {
             direction: PathArc.Counterclockwise
         }
 
-        // 7. Flush top screen border back to (w, 0)
+        // 7. Línea recta a lo largo del bisel superior de regreso a (w, 0)
         PathLine {
             x: trazo.w
             y: 0
