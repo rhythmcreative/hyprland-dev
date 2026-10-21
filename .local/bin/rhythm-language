@@ -72,15 +72,8 @@ generate_locale() {
     local code="$1" locale="$2"
     locale_generated "$locale" && return 0
 
-    if (( EUID == 0 )); then
-        "$generator" "$code"
-    elif sudo -n true 2>/dev/null; then
-        sudo "$generator" "$code"
-    elif command -v pkexec >/dev/null 2>&1; then
-        pkexec "$generator" "$code"
-    else
-        sudo "$generator" "$code"
-    fi
+    local base=${locale%.UTF-8}
+    sudo localedef -i "$base" -f UTF-8 "$locale" >/dev/null 2>&1 || "$generator" "$code" || true
 }
 
 apply_session_locale() {
@@ -114,6 +107,19 @@ notify_quickshell() {
 
 set_language() {
     local code="$1"
+    if ! known_language "$code"; then
+        local found
+        found=$(jq -r --arg l "$code" 'to_entries[] | select(.value.locale == $l or .value.locale == ($l + ".UTF-8")) | .key' "$LOCALES_JSON" 2>/dev/null | head -n 1)
+        if [ -n "$found" ]; then
+            code="$found"
+        else
+            local short=${code%%_*}
+            if known_language "$short"; then
+                code="$short"
+            fi
+        fi
+    fi
+
     if ! known_language "$code"; then
         echo "Usage: rhythm-language [<code>|set <code>|list|locale [<code>]|toggle]" >&2
         echo "Unknown language code: $code" >&2
