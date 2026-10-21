@@ -2956,17 +2956,17 @@ ShellRoot {
 
             Behavior on width {
                 NumberAnimation {
-                    duration: islandWin.langExpanded ? 340 : 220
+                    duration: islandWin.langExpanded ? 380 : 220
                     easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
-                    easing.overshoot: 1.07
+                    easing.overshoot: 1.12
                 }
             }
 
             Behavior on height {
                 NumberAnimation {
-                    duration: islandWin.langExpanded ? 360 : 220
+                    duration: islandWin.langExpanded ? 400 : 220
                     easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
-                    easing.overshoot: 1.05
+                    easing.overshoot: 1.08
                 }
             }
 
@@ -2988,14 +2988,16 @@ ShellRoot {
 
                 Behavior on ala {
                     NumberAnimation {
-                        duration: islandWin.langExpanded ? 320 : 200
-                        easing.type: Easing.OutCubic
+                        duration: islandWin.langExpanded ? 360 : 200
+                        easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.OutCubic
+                        easing.overshoot: 1.15
                     }
                 }
                 Behavior on cuerpoRadio {
                     NumberAnimation {
-                        duration: islandWin.langExpanded ? 320 : 200
-                        easing.type: Easing.OutCubic
+                        duration: islandWin.langExpanded ? 360 : 200
+                        easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.OutCubic
+                        easing.overshoot: 1.10
                     }
                 }
             }
@@ -3005,7 +3007,7 @@ ShellRoot {
                 anchors.fill: parent
             }
 
-            // Inner content area with generous, balanced margins
+            // Inner content area with generous, balanced margins and coordinated spring choreography
             Item {
                 id: langContentArea
                 anchors.fill: parent
@@ -3014,6 +3016,55 @@ ShellRoot {
                 anchors.rightMargin: 20
                 anchors.bottomMargin: 26
                 clip: true
+
+                opacity: islandWin.langExpanded ? 1.0 : 0.0
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: islandWin.langExpanded ? 280 : 140
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                transform: [
+                    Translate {
+                        x: islandWin.langExpanded ? 0 : 26
+                        y: islandWin.langExpanded ? 0 : -22
+                        Behavior on x {
+                            NumberAnimation {
+                                duration: islandWin.langExpanded ? 360 : 180
+                                easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
+                                easing.overshoot: 1.06
+                            }
+                        }
+                        Behavior on y {
+                            NumberAnimation {
+                                duration: islandWin.langExpanded ? 360 : 180
+                                easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
+                                easing.overshoot: 1.06
+                            }
+                        }
+                    },
+                    Scale {
+                        origin.x: langContentArea.width
+                        origin.y: 0
+                        xScale: islandWin.langExpanded ? 1.0 : 0.90
+                        yScale: islandWin.langExpanded ? 1.0 : 0.90
+                        Behavior on xScale {
+                            NumberAnimation {
+                                duration: islandWin.langExpanded ? 360 : 180
+                                easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
+                                easing.overshoot: 1.08
+                            }
+                        }
+                        Behavior on yScale {
+                            NumberAnimation {
+                                duration: islandWin.langExpanded ? 360 : 180
+                                easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
+                                easing.overshoot: 1.08
+                            }
+                        }
+                    }
+                ]
 
                 ColumnLayout {
                     id: langContentCol
