@@ -37,21 +37,8 @@ if [ -f "$HOME/.config/rhythm/language" ]; then
     active_lang=$(head -n 1 "$HOME/.config/rhythm/language" 2>/dev/null | tr -d '[:space:]')
 fi
 
-# Placeholder localizado segun idioma activo
-placeholder_text="Buscar aplicaciones..."
-case "$active_lang" in
-    es|es-*)   placeholder_text="Buscar aplicaciones..." ;;
-    en|en-*)   placeholder_text="Search apps..." ;;
-    fr|fr-*)   placeholder_text="Rechercher des applications..." ;;
-    de|de-*)   placeholder_text="Apps durchsuchen..." ;;
-    it|it-*)   placeholder_text="Cerca applicazioni..." ;;
-    pt|pt-*)   placeholder_text="Pesquisar aplicações..." ;;
-    ru|ru-*)   placeholder_text="Поиск приложений..." ;;
-    ja|ja-*)   placeholder_text="アプリを検索..." ;;
-    zh|zh-*)   placeholder_text="搜索应用程序..." ;;
-    fi|fi-*)   placeholder_text="Etsi sovelluksia..." ;;
-    *)         placeholder_text="Search apps..." ;;
-esac
+# Placeholder localizado dinámicamente según idioma activo (51 idiomas soportados)
+placeholder_text=$(rhythm-i18n "rofi_search_apps" "Buscar aplicaciones..." "$active_lang" 2>/dev/null || echo "Buscar aplicaciones...")
 
 # Asegurar locale UTF-8 valido para evitar que rofi falle con 'Failed to set locale'
 if ! locale >/dev/null 2>&1; then

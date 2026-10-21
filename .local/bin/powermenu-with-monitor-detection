@@ -452,46 +452,18 @@ no='✗'       # X mark simple
 # El fondo lo pone rofi, no este script. Asi el menu de apagado y su
 # confirmacion no pueden quedarse sin fondo por separado del resto de menus.
 #
-# Localización según idioma activo
+# Localización dinámica universal según idioma activo (51 idiomas soportados)
 active_lang=$(head -n 1 "$HOME/.config/rhythm/language" 2>/dev/null | tr -d '[:space:]')
-case "${active_lang:-es}" in
-    es|es-*)
-        p_bye="Hasta pronto, ${USER}"
-        mesg_uptime="Tiempo encendido: $uptime"
-        p_confirm="Confirmación"
-        mesg_sure="¿Estás seguro?"
-        ;;
-    fr|fr-*)
-        p_bye="À bientôt, ${USER}"
-        mesg_uptime="Temps de fonctionnement : $uptime"
-        p_confirm="Confirmation"
-        mesg_sure="Êtes-vous sûr ?"
-        ;;
-    de|de-*)
-        p_bye="Auf Wiedersehen, ${USER}"
-        mesg_uptime="Betriebszeit: $uptime"
-        p_confirm="Bestätigung"
-        mesg_sure="Sind Sie sicher?"
-        ;;
-    it|it-*)
-        p_bye="Arrivederci, ${USER}"
-        mesg_uptime="Tempo di attività: $uptime"
-        p_confirm="Conferma"
-        mesg_sure="Sei sicuro?"
-        ;;
-    pt|pt-*)
-        p_bye="Até logo, ${USER}"
-        mesg_uptime="Tempo de atividade: $uptime"
-        p_confirm="Confirmação"
-        mesg_sure="Tens a certeza?"
-        ;;
-    *)
-        p_bye="Goodbye, ${USER}"
-        mesg_uptime="Uptime: $uptime"
-        p_confirm="Confirmation"
-        mesg_sure="Are you sure?"
-        ;;
-esac
+active_lang="${active_lang:-es}"
+
+p_bye=$(rhythm-i18n "power_bye" "Goodbye, {user}" "$active_lang" 2>/dev/null || echo "Goodbye, {user}")
+p_bye="${p_bye//\{user\}/${USER}}"
+
+mesg_uptime=$(rhythm-i18n "power_uptime" "Uptime: {uptime}" "$active_lang" 2>/dev/null || echo "Uptime: {uptime}")
+mesg_uptime="${mesg_uptime//\{uptime\}/$uptime}"
+
+p_confirm=$(rhythm-i18n "power_confirm" "Confirmation" "$active_lang" 2>/dev/null || echo "Confirmation")
+mesg_sure=$(rhythm-i18n "power_sure" "Are you sure?" "$active_lang" 2>/dev/null || echo "Are you sure?")
 
 # Rofi CMD con monitor especifico
 rofi_cmd() {

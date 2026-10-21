@@ -198,6 +198,13 @@ set_language() {
     notify_quickshell "$code"
     update_hyprlock_locale "$code"
 
+    # Sync SDDM greeter theme translations and locale
+    if command -v sync-sddm-locale >/dev/null 2>&1; then
+        sync-sddm-locale "$code" >/dev/null 2>&1 || true
+    elif [ -x "$HOME/.local/bin/sync-sddm-locale" ]; then
+        "$HOME/.local/bin/sync-sddm-locale" "$code" >/dev/null 2>&1 || true
+    fi
+
     # Auto-switch keyboard layout to matching language if configured
     local kb_map=""
     case "$code" in
@@ -253,7 +260,13 @@ set_language() {
     generate_locale "$code" "$locale"
 
     if command -v notify-send >/dev/null 2>&1; then
-        notify-send -a "Language" -i "preferences-desktop-locale" "Language Changed" "Switched to $flag $name ($locale)" -t 2500 2>/dev/null || true
+        local n_title n_body
+        n_title=$(rhythm-i18n "notif_lang_title" "Language" "$code" 2>/dev/null || echo "Language")
+        n_body=$(rhythm-i18n "notif_lang_changed" "Switched to {flag} {name} ({locale})" "$code" 2>/dev/null || echo "Switched to {flag} {name} ({locale})")
+        n_body="${n_body//\{flag\}/$flag}"
+        n_body="${n_body//\{name\}/$name}"
+        n_body="${n_body//\{locale\}/$locale}"
+        notify-send -a "Language" -i "preferences-desktop-locale" "$n_title" "$n_body" -t 2500 2>/dev/null || true
     fi
     echo "Switched language to: $flag $name ($code, $locale)"
 }

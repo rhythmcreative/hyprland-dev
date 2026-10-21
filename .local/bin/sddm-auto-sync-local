@@ -161,6 +161,11 @@ if [ -f "$PYWAL_SH" ]; then
         fi
     done
     
+    # Sincronizar traducciones e idioma activo
+    if [ -x "$REAL_HOME/.local/bin/sync-sddm-locale" ]; then
+        "$REAL_HOME/.local/bin/sync-sddm-locale" 2>/dev/null || true
+    fi
+
     echo "SDDM actualizado correctamente."
 else
     echo "No se encontraron colores de Pywal, solo se actualizó el wallpaper."
