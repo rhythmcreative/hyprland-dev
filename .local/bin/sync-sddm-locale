@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# sync-sddm-locale: Sincroniza el idioma y traducciones activas con el tema SDDM Astronaut.
+
+set -euo pipefail
+
+SDDM_THEME_DIR="/usr/share/sddm/themes/sddm-astronaut-theme"
+REPO_THEME_DIR="${RHYTHM_DOTFILES_DIR:-$HOME/hyprland}/sddm/sddm-astronaut-theme"
+
+CODE="${1:-}"
+if [ -z "$CODE" ]; then
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/rhythm/language" ]; then
+        CODE=$(head -n 1 "${XDG_CONFIG_HOME:-$HOME/.config}/rhythm/language" 2>/dev/null | tr -d '[:space:]')
+    fi
+    [ -z "$CODE" ] && CODE="es"
+fi
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rhythm"
+CATALOG="$CONFIG_DIR/i18n/$CODE/island.json"
+[ -f "$CATALOG" ] || CATALOG="$HOME/hyprland/.config/rhythm/i18n/$CODE/island.json"
+
+# Extraer traducciones SDDM
+t_username=$(jq -r '.sddm_username // "Username"' "$CATALOG" 2>/dev/null || echo "Username")
+t_password=$(jq -r '.sddm_password // "Password"' "$CATALOG" 2>/dev/null || echo "Password")
+t_login=$(jq -r '.sddm_login // "Login"' "$CATALOG" 2>/dev/null || echo "Login")
+t_failed=$(jq -r '.sddm_login_failed // "Login Failed"' "$CATALOG" 2>/dev/null || echo "Login Failed")
+t_capslock=$(jq -r '.sddm_capslock // "Caps Lock is on"' "$CATALOG" 2>/dev/null || echo "Caps Lock is on")
+t_suspend=$(jq -r '.sddm_suspend // "Suspend"' "$CATALOG" 2>/dev/null || echo "Suspend")
+t_hibernate=$(jq -r '.sddm_hibernate // "Hibernate"' "$CATALOG" 2>/dev/null || echo "Hibernate")
+t_reboot=$(jq -r '.sddm_reboot // "Reboot"' "$CATALOG" 2>/dev/null || echo "Reboot")
+t_shutdown=$(jq -r '.sddm_shutdown // "Shutdown"' "$CATALOG" 2>/dev/null || echo "Shutdown")
+t_session=$(jq -r '.sddm_session // "Session"' "$CATALOG" 2>/dev/null || echo "Session")
+t_vkb_on=$(jq -r '.sddm_vkb_on // "Virtual Keyboard (on)"' "$CATALOG" 2>/dev/null || echo "Virtual Keyboard (on)")
+t_vkb_off=$(jq -r '.sddm_vkb_off // "Virtual Keyboard (off)"' "$CATALOG" 2>/dev/null || echo "Virtual Keyboard (off)")
+
+# Determinar Locale para fecha y hora de SDDM (ej. es_ES.UTF-8, ja_JP.UTF-8)
+sddm_locale=""
+if [ -f "$CONFIG_DIR/locales.json" ]; then
+    sddm_locale=$(jq -r --arg c "$CODE" '.[$c].locale // empty' "$CONFIG_DIR/locales.json" 2>/dev/null)
+fi
+if [ -z "$sddm_locale" ] && [ -f "$HOME/hyprland/.config/rhythm/i18n/locales.json" ]; then
+    sddm_locale=$(jq -r --arg c "$CODE" '.[$c].locale // empty' "$HOME/hyprland/.config/rhythm/i18n/locales.json" 2>/dev/null)
+fi
+[ -z "$sddm_locale" ] && sddm_locale="es_ES.UTF-8"
+
+# 1. Actualizar siempre los ficheros en el repositorio local (usuario)
+for target_conf in "$REPO_THEME_DIR/theme.conf" "$REPO_THEME_DIR/Themes/theme1.conf"; do
+    if [ -f "$target_conf" ]; then
+        sed -i "s|^TranslatePlaceholderUsername=.*|TranslatePlaceholderUsername=\"$t_username\"|" "$target_conf"
+        sed -i "s|^TranslatePlaceholderPassword=.*|TranslatePlaceholderPassword=\"$t_password\"|" "$target_conf"
+        sed -i "s|^TranslateLogin=.*|TranslateLogin=\"$t_login\"|" "$target_conf"
+        sed -i "s|^TranslateLoginFailedWarning=.*|TranslateLoginFailedWarning=\"$t_failed\"|" "$target_conf"
+        sed -i "s|^TranslateCapslockWarning=.*|TranslateCapslockWarning=\"$t_capslock\"|" "$target_conf"
+        sed -i "s|^TranslateSuspend=.*|TranslateSuspend=\"$t_suspend\"|" "$target_conf"
+        sed -i "s|^TranslateHibernate=.*|TranslateHibernate=\"$t_hibernate\"|" "$target_conf"
+        sed -i "s|^TranslateReboot=.*|TranslateReboot=\"$t_reboot\"|" "$target_conf"
+        sed -i "s|^TranslateShutdown=.*|TranslateShutdown=\"$t_shutdown\"|" "$target_conf"
+        sed -i "s|^TranslateSessionSelection=.*|TranslateSessionSelection=\"$t_session\"|" "$target_conf"
+        sed -i "s|^TranslateVirtualKeyboardButtonOn=.*|TranslateVirtualKeyboardButtonOn=\"$t_vkb_on\"|" "$target_conf"
+        sed -i "s|^TranslateVirtualKeyboardButtonOff=.*|TranslateVirtualKeyboardButtonOff=\"$t_vkb_off\"|" "$target_conf"
+        sed -i "s|^Locale=.*|Locale=\"$sddm_locale\"|" "$target_conf"
+    fi
+done
+
+# 2. Si el directorio de sistema /usr/share/sddm existe y es escribible o tenemos sudo NOPASSWD, sincronizar sistema
+if [ -d "$SDDM_THEME_DIR" ]; then
+    if [ -w "$SDDM_THEME_DIR/theme.conf" ]; then
+        for sys_conf in "$SDDM_THEME_DIR/theme.conf" "$SDDM_THEME_DIR/Themes/theme1.conf"; do
+            [ -f "$sys_conf" ] || continue
+            sed -i "s|^TranslatePlaceholderUsername=.*|TranslatePlaceholderUsername=\"$t_username\"|" "$sys_conf"
+            sed -i "s|^TranslatePlaceholderPassword=.*|TranslatePlaceholderPassword=\"$t_password\"|" "$sys_conf"
+            sed -i "s|^TranslateLogin=.*|TranslateLogin=\"$t_login\"|" "$sys_conf"
+            sed -i "s|^TranslateLoginFailedWarning=.*|TranslateLoginFailedWarning=\"$t_failed\"|" "$sys_conf"
+            sed -i "s|^TranslateCapslockWarning=.*|TranslateCapslockWarning=\"$t_capslock\"|" "$sys_conf"
+            sed -i "s|^TranslateSuspend=.*|TranslateSuspend=\"$t_suspend\"|" "$sys_conf"
+            sed -i "s|^TranslateHibernate=.*|TranslateHibernate=\"$t_hibernate\"|" "$sys_conf"
+            sed -i "s|^TranslateReboot=.*|TranslateReboot=\"$t_reboot\"|" "$sys_conf"
+            sed -i "s|^TranslateShutdown=.*|TranslateShutdown=\"$t_shutdown\"|" "$sys_conf"
+            sed -i "s|^TranslateSessionSelection=.*|TranslateSessionSelection=\"$t_session\"|" "$sys_conf"
+            sed -i "s|^TranslateVirtualKeyboardButtonOn=.*|TranslateVirtualKeyboardButtonOn=\"$t_vkb_on\"|" "$sys_conf"
+            sed -i "s|^TranslateVirtualKeyboardButtonOff=.*|TranslateVirtualKeyboardButtonOff=\"$t_vkb_off\"|" "$sys_conf"
+            sed -i "s|^Locale=.*|Locale=\"$sddm_locale\"|" "$sys_conf"
+        done
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo -n bash -c "
+            for sys_conf in '$SDDM_THEME_DIR/theme.conf' '$SDDM_THEME_DIR/Themes/theme1.conf'; do
+                [ -f \"\$sys_conf\" ] || continue
+                sed -i 's|^TranslatePlaceholderUsername=.*|TranslatePlaceholderUsername=\"$t_username\"|' \"\$sys_conf\"
+                sed -i 's|^TranslatePlaceholderPassword=.*|TranslatePlaceholderPassword=\"$t_password\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateLogin=.*|TranslateLogin=\"$t_login\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateLoginFailedWarning=.*|TranslateLoginFailedWarning=\"$t_failed\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateCapslockWarning=.*|TranslateCapslockWarning=\"$t_capslock\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateSuspend=.*|TranslateSuspend=\"$t_suspend\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateHibernate=.*|TranslateHibernate=\"$t_hibernate\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateReboot=.*|TranslateReboot=\"$t_reboot\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateShutdown=.*|TranslateShutdown=\"$t_shutdown\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateSessionSelection=.*|TranslateSessionSelection=\"$t_session\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateVirtualKeyboardButtonOn=.*|TranslateVirtualKeyboardButtonOn=\"$t_vkb_on\"|' \"\$sys_conf\"
+                sed -i 's|^TranslateVirtualKeyboardButtonOff=.*|TranslateVirtualKeyboardButtonOff=\"$t_vkb_off\"|' \"\$sys_conf\"
+                sed -i 's|^Locale=.*|Locale=\"$sddm_locale\"|' \"\$sys_conf\"
+            done
+        " 2>/dev/null || true
+    fi
+fi

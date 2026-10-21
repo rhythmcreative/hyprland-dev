@@ -221,7 +221,9 @@ def main():
                 subprocess.run(["sudo", "cpupower", "frequency-set", "-g", "powersave"], stderr=subprocess.DEVNULL)
             run_hyprctl(["reload"])
             apply_saved_tweaks()
-            subprocess.run(["notify-send", "Performance", "Balanced mode restored"], stderr=subprocess.DEVNULL)
+            t_title = subprocess.check_output(["rhythm-i18n", "notif_perf_title", "Performance"], text=True).strip() if shutil.which("rhythm-i18n") else "Performance"
+            t_body = subprocess.check_output(["rhythm-i18n", "notif_perf_balanced", "Balanced mode restored"], text=True).strip() if shutil.which("rhythm-i18n") else "Balanced mode restored"
+            subprocess.run(["notify-send", t_title, t_body], stderr=subprocess.DEVNULL)
         else:
             if os.path.exists("/tmp/powersave-active"):
                 try:
@@ -240,7 +242,9 @@ def main():
             res = run_hyprctl(["eval", "hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = false } })"])
             if "legacy parsers" in res or "unknown" in res.lower() or not res.strip():
                 run_hyprctl(["--batch", "keyword decoration:blur:enabled 0; keyword decoration:shadow:enabled 0; keyword animations:enabled 0"])
-            subprocess.run(["notify-send", "Performance", "Max performance enabled"], stderr=subprocess.DEVNULL)
+            t_title = subprocess.check_output(["rhythm-i18n", "notif_perf_title", "Performance"], text=True).strip() if shutil.which("rhythm-i18n") else "Performance"
+            t_body = subprocess.check_output(["rhythm-i18n", "notif_perf_max", "Max performance enabled"], text=True).strip() if shutil.which("rhythm-i18n") else "Max performance enabled"
+            subprocess.run(["notify-send", t_title, t_body], stderr=subprocess.DEVNULL)
     elif cmd == "toggle-split":
         res = run_hyprctl(["dispatch", 'hl.dsp.layout("togglesplit")'])
         if "error" in res.lower():

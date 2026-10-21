@@ -18,7 +18,10 @@ if [ -z "$code" ]; then
 fi
 
 if [ "${1:-}" = "--notify" ] && command -v notify-send >/dev/null 2>&1 && [ -n "$code" ]; then
-    notify-send "Keyboard" "$code" -t 1200 -i input-keyboard >/dev/null 2>&1 || true
+    n_title=$(rhythm-i18n "notif_kb_title" "Keyboard Layout" 2>/dev/null || echo "Keyboard Layout")
+    n_body=$(rhythm-i18n "notif_kb_switched" "Active layout: {layout}" 2>/dev/null || echo "Active layout: {layout}")
+    n_body="${n_body//\{layout\}/$code}"
+    notify-send "$n_title" "$n_body" -t 1200 -i input-keyboard >/dev/null 2>&1 || true
 fi
 
 echo "${code:-desconocido}"

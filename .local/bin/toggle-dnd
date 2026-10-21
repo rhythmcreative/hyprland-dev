@@ -28,7 +28,14 @@ dnd_off() {
 }
 
 dnd_notify() {
-    notify-send "Do Not Disturb" "$1" 2>/dev/null || true
+    local title body
+    title=$(rhythm-i18n "notif_dnd_title" "Do Not Disturb" 2>/dev/null || echo "Do Not Disturb")
+    if [ "$1" = "on" ]; then
+        body=$(rhythm-i18n "notif_dnd_enabled" "Notifications silenced" 2>/dev/null || echo "Notifications silenced")
+    else
+        body=$(rhythm-i18n "notif_dnd_disabled" "Notifications restored" 2>/dev/null || echo "Notifications restored")
+    fi
+    notify-send -a "Do Not Disturb" -i "notifications-disabled" "$title" "$body" 2>/dev/null || true
 }
 
 case "$ACTION" in
@@ -41,19 +48,19 @@ case "$ACTION" in
         ;;
     on)
         dnd_on
-        dnd_notify "Enabled - notifications silenced"
+        dnd_notify "on"
         ;;
     off)
         dnd_off
-        dnd_notify "Disabled - notifications allowed"
+        dnd_notify "off"
         ;;
     toggle|*)
         if [ -f "$STATE_FILE" ]; then
             dnd_off
-            dnd_notify "Disabled - notifications allowed"
+            dnd_notify "off"
         else
             dnd_on
-            dnd_notify "Enabled - notifications silenced"
+            dnd_notify "on"
         fi
         ;;
 esac

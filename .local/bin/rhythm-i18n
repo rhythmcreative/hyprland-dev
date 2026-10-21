@@ -1,0 +1,47 @@
+#!/bin/bash
+# rhythm-i18n: High-performance localized string getter for Rhythm/Hyprland environment
+# Usage: rhythm-i18n <key> [fallback] [code]
+
+KEY="${1:-}"
+FALLBACK="${2:-}"
+CODE="${3:-}"
+
+if [ -z "$KEY" ]; then
+    echo "Usage: rhythm-i18n <key> [fallback] [code]" >&2
+    exit 1
+fi
+
+if [ -z "$CODE" ]; then
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/rhythm/language" ]; then
+        CODE=$(head -n 1 "${XDG_CONFIG_HOME:-$HOME/.config}/rhythm/language" 2>/dev/null | tr -d '[:space:]')
+    fi
+    [ -z "$CODE" ] && CODE="es"
+fi
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rhythm"
+CATALOG="$CONFIG_DIR/i18n/$CODE/island.json"
+
+if [ ! -f "$CATALOG" ]; then
+    CATALOG="$HOME/hyprland/.config/rhythm/i18n/$CODE/island.json"
+fi
+
+if [ -f "$CATALOG" ]; then
+    VAL=$(jq -r --arg k "$KEY" '.[$k] // empty' "$CATALOG" 2>/dev/null)
+    if [ -n "$VAL" ]; then
+        echo "$VAL"
+        exit 0
+    fi
+fi
+
+# Fallback to English if not found
+EN_CATALOG="$CONFIG_DIR/i18n/en/island.json"
+[ -f "$EN_CATALOG" ] || EN_CATALOG="$HOME/hyprland/.config/rhythm/i18n/en/island.json"
+if [ -f "$EN_CATALOG" ]; then
+    VAL=$(jq -r --arg k "$KEY" '.[$k] // empty' "$EN_CATALOG" 2>/dev/null)
+    if [ -n "$VAL" ]; then
+        echo "$VAL"
+        exit 0
+    fi
+fi
+
+[ -n "$FALLBACK" ] && echo "$FALLBACK" || echo "$KEY"

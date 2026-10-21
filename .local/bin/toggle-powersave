@@ -59,7 +59,10 @@ enable_powersave() {
     "$HOME/.local/bin/rofi-colors" 2>/dev/null || true
 
     # 6. Desktop Notification
-    notify-send -a "Battery Saver" -i battery-caution "Battery Saver Turned On" "Performance optimized and solid window surfaces" 2>/dev/null || true
+    local p_title p_body
+    p_title=$(rhythm-i18n "notif_power_title" "Battery Saver" 2>/dev/null || echo "Battery Saver")
+    p_body=$(rhythm-i18n "notif_power_enabled" "Performance optimized and solid window surfaces" 2>/dev/null || echo "Performance optimized and solid window surfaces")
+    notify-send -a "Battery Saver" -i battery-caution "$p_title" "$p_body" 2>/dev/null || true
     echo "on"
 }
 
@@ -106,7 +109,10 @@ disable_powersave() {
     # fichero a vacio, que no era lo mismo que no existir.
 
     # 6. Desktop Notification
-    notify-send -a "Battery Saver" -i battery-good "Battery Saver Turned Off" "Normal performance and visual effects restored" 2>/dev/null || true
+    local p_title p_body
+    p_title=$(rhythm-i18n "notif_power_title" "Battery Saver" 2>/dev/null || echo "Battery Saver")
+    p_body=$(rhythm-i18n "notif_power_disabled" "Normal performance and visual effects restored" 2>/dev/null || echo "Normal performance and visual effects restored")
+    notify-send -a "Battery Saver" -i battery-good "$p_title" "$p_body" 2>/dev/null || true
     echo "off"
 }
 

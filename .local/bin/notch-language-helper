@@ -572,7 +572,8 @@ def set_user_locale(loc):
 
     try:
         label = next((l["label"] for l in POPULAR_LOCALES if l["locale"] == clean_loc), clean_loc)
-        subprocess.run(["notify-send", "-a", "Language Settings", "-i", "preferences-desktop-locale", "User language updated", f"{label}\nWill take full effect after restarting your session."], capture_output=True, timeout=2)
+        t_title = subprocess.check_output(["rhythm-i18n", "notif_lang_title", "Language"], text=True).strip() if shutil.which("rhythm-i18n") else "Language"
+        subprocess.run(["notify-send", "-a", "Language Settings", "-i", "preferences-desktop-locale", t_title, f"{label}"], capture_output=True, timeout=2)
     except Exception:
         pass
 
@@ -625,7 +626,8 @@ def set_system_locale(loc):
 
     try:
         label = next((l["label"] for l in POPULAR_LOCALES if l["locale"] == clean_loc), clean_loc)
-        subprocess.run(["notify-send", "-a", "Language Settings", "-i", "preferences-desktop-locale", "System language updated", f"{label} (localectl)."], capture_output=True, timeout=2)
+        t_title = subprocess.check_output(["rhythm-i18n", "notif_lang_title", "Language"], text=True).strip() if shutil.which("rhythm-i18n") else "Language"
+        subprocess.run(["notify-send", "-a", "Language Settings", "-i", "preferences-desktop-locale", t_title, f"{label} (localectl)"], capture_output=True, timeout=2)
     except Exception:
         pass
 
