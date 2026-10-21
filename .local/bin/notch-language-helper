@@ -52,6 +52,24 @@ POPULAR_LAYOUTS = [
     {"code": "cz", "label": "Czech"},
     {"code": "ro", "label": "Romanian"},
     {"code": "hu", "label": "Hungarian"},
+    {"code": "il", "label": "Hebrew"},
+    {"code": "bg", "label": "Bulgarian"},
+    {"code": "sk", "label": "Slovak"},
+    {"code": "hr", "label": "Croatian"},
+    {"code": "si", "label": "Slovenian"},
+    {"code": "ee", "label": "Estonian"},
+    {"code": "lv", "label": "Latvian"},
+    {"code": "lt", "label": "Lithuanian"},
+    {"code": "th", "label": "Thai"},
+    {"code": "vn", "label": "Vietnamese"},
+    {"code": "in", "label": "Hindi"},
+    {"code": "bd", "label": "Bengali"},
+    {"code": "pk", "label": "Urdu"},
+    {"code": "ir", "label": "Persian"},
+    {"code": "is", "label": "Icelandic"},
+    {"code": "ie", "label": "Irish"},
+    {"code": "uz", "label": "Uzbek"},
+    {"code": "lk", "label": "Sinhala / Tamil"},
 ]
 
 POPULAR_LOCALES = [
@@ -107,6 +125,25 @@ LAYOUT_NAMES = {
     "cz": "Czech",
     "ro": "Romanian",
     "hu": "Hungarian",
+    "il": "Hebrew",
+    "bg": "Bulgarian",
+    "sk": "Slovak",
+    "hr": "Croatian",
+    "si": "Slovenian",
+    "ee": "Estonian",
+    "lv": "Latvian",
+    "lt": "Lithuanian",
+    "th": "Thai",
+    "vn": "Vietnamese",
+    "in": "Hindi",
+    "bd": "Bengali",
+    "pk": "Urdu",
+    "ir": "Persian",
+    "is": "Icelandic",
+    "ie": "Irish",
+    "uz": "Uzbek",
+    "lk": "Sinhala / Tamil",
+    "tw": "Chinese (Taiwan)",
 }
 
 def get_hypr_socket():
@@ -547,7 +584,11 @@ def set_user_locale(loc):
         "ko": "kr", "ar": "ara", "tr": "tr", "pl": "pl", "nl": "nl",
         "sv": "se", "no": "no", "nb": "no", "nn": "no", "da": "dk",
         "fi": "fi", "el": "gr", "cs": "cz", "ro": "ro", "hu": "hu",
-        "uk": "ua"
+        "uk": "ua", "he": "il", "bg": "bg", "sk": "sk", "hr": "hr",
+        "sl": "si", "et": "ee", "lv": "lv", "lt": "lt", "ca": "es",
+        "vi": "vn", "th": "th", "id": "us", "ms": "us", "fil": "us",
+        "hi": "in", "bn": "bd", "ur": "pk", "fa": "ir", "sw": "us",
+        "is": "is", "ga": "ie", "uz": "uz", "si": "lk", "ta": "lk"
     }
     match_lay = locale_layout_map.get(lang_code)
     if match_lay:

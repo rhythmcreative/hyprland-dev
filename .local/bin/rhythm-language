@@ -145,12 +145,48 @@ set_language() {
     # Auto-switch keyboard layout to matching language if configured
     local kb_map=""
     case "$code" in
-        es|es-ES|es-MX|latam) kb_map="es" ;;
-        en|en-US|en-GB) kb_map="us" ;;
+        es|es-ES|es-MX|latam|ca) kb_map="es" ;;
+        en|en-US|en-GB|id|ms|fil|sw) kb_map="us" ;;
         de) kb_map="de" ;;
         fr) kb_map="fr" ;;
         it) kb_map="it" ;;
         pt|pt-BR) kb_map="pt" ;;
+        ru) kb_map="ru" ;;
+        ja) kb_map="jp" ;;
+        zh-CN|cmn) kb_map="cn" ;;
+        zh-TW) kb_map="tw" ;;
+        ko) kb_map="kr" ;;
+        tr) kb_map="tr" ;;
+        pl) kb_map="pl" ;;
+        nl) kb_map="nl" ;;
+        sv) kb_map="se" ;;
+        no) kb_map="no" ;;
+        da) kb_map="dk" ;;
+        fi) kb_map="fi" ;;
+        el) kb_map="gr" ;;
+        cs) kb_map="cz" ;;
+        ro) kb_map="ro" ;;
+        hu) kb_map="hu" ;;
+        uk) kb_map="ua" ;;
+        he) kb_map="il" ;;
+        bg) kb_map="bg" ;;
+        sk) kb_map="sk" ;;
+        hr) kb_map="hr" ;;
+        sl) kb_map="si" ;;
+        et) kb_map="ee" ;;
+        lv) kb_map="lv" ;;
+        lt) kb_map="lt" ;;
+        th) kb_map="th" ;;
+        vi) kb_map="vn" ;;
+        hi) kb_map="in" ;;
+        bn) kb_map="bd" ;;
+        ur) kb_map="pk" ;;
+        fa) kb_map="ir" ;;
+        is) kb_map="is" ;;
+        ga) kb_map="ie" ;;
+        uz) kb_map="uz" ;;
+        si|ta) kb_map="lk" ;;
+        ar) kb_map="ara" ;;
         *) kb_map="" ;;
     esac
     if [ -n "$kb_map" ] && [ -x "$HOME/.local/bin/notch-language-helper" ]; then
