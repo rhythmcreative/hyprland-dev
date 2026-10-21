@@ -471,7 +471,6 @@ hl.layer_rule({
     name  = "rofi-blur",
     match = { namespace = "rofi" },
     blur = true,
-    animation = "popin 85%",
 })
 
 hl.layer_rule({
