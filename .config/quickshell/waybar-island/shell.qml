@@ -2920,8 +2920,8 @@ ShellRoot {
             id: langRightCapsule
             anchors.top: parent.top
             anchors.right: parent.right
-            width: islandWin.langExpanded ? 480 : 200
-            height: islandWin.langExpanded ? Math.min(680, langContentCol.implicitHeight + 46) : 0
+            width: islandWin.langExpanded ? 500 : 200
+            height: islandWin.langExpanded ? Math.min(620, langContentCol.implicitHeight + 48) : 0
             clip: true
 
             opacity: islandWin.langExpanded ? 1.0 : 0.0
@@ -2950,14 +2950,14 @@ ShellRoot {
                 }
             }
 
-            // Apple Dynamic Island corner silhouette fused to top and right screen edges
+            // Apple Dynamic Island corner silhouette fused seamlessly to top and right borders (no white stroke)
             SiluetaEsquinaDerecha {
                 anchors.fill: parent
-                ala: islandWin.langExpanded ? 24 : 8
-                cuerpoRadio: islandWin.langExpanded ? 30 : 12
+                ala: islandWin.langExpanded ? 22 : 6
+                cuerpoRadio: islandWin.langExpanded ? 28 : 10
                 relleno: root.colBg
-                bordeColor: Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.4)
-                bordeAncho: 2
+                bordeColor: "transparent"
+                bordeAncho: 0
 
                 Behavior on ala {
                     NumberAnimation {
@@ -2978,13 +2978,13 @@ ShellRoot {
                 anchors.fill: parent
             }
 
-            // Inner content area respecting corner wings on top, left and bottom
+            // Inner content area with generous, balanced margins
             Item {
                 id: langContentArea
                 anchors.fill: parent
-                anchors.topMargin: 14
-                anchors.leftMargin: 26
-                anchors.rightMargin: 16
+                anchors.topMargin: 16
+                anchors.leftMargin: 38
+                anchors.rightMargin: 20
                 anchors.bottomMargin: 26
                 clip: true
 
@@ -2993,40 +2993,40 @@ ShellRoot {
                     anchors.fill: parent
                     spacing: 12
 
-                    // Dynamic Island grabber bar
+                    // Grabber notch indicator
                     Rectangle {
-                        width: 40
+                        width: 36
                         height: 4
                         radius: 2
                         color: root.colMuted
-                        opacity: 0.5
+                        opacity: 0.4
                         Layout.alignment: Qt.AlignHCenter
                     }
 
-                    // 1. Header (Icono Nerd Font, Titulo, Estado actual y boton de cierre)
+                    // 1. Header (Icon, Title, Subtitle, Close)
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 10
 
                         Rectangle {
-                            width: 32
-                            height: 32
-                            radius: 16
-                            color: root.colSurface
-                            border.color: root.colBorder
-                            border.width: 1.5
+                            width: 34
+                            height: 34
+                            radius: 17
+                            color: Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15)
 
                             Text {
                                 anchors.centerIn: parent
                                 text: "󰗊"
                                 color: root.colAccent
                                 font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 14
+                                font.pixelSize: 16
                             }
                         }
 
                         ColumnLayout {
+                            Layout.fillWidth: true
                             spacing: 1
+
                             Text {
                                 text: root.t("island_language", "Idioma y Teclado")
                                 color: root.colFg
@@ -3034,6 +3034,7 @@ ShellRoot {
                                 font.pixelSize: 12
                                 font.weight: Font.Bold
                             }
+
                             Text {
                                 text: (root.activeLanguage === "es" ? "Español" : (root.activeLanguage === "en" ? "English" : root.activeLanguage.toUpperCase())) + " · " + (root.kbLayout || "US")
                                 color: root.colAccent
@@ -3045,14 +3046,12 @@ ShellRoot {
 
                         Item { Layout.fillWidth: true }
 
-                        // Close Pill Button
+                        // Close Button
                         Rectangle {
-                            width: 30
-                            height: 30
-                            radius: 15
-                            color: closeHover.hovered ? root.colSurfaceHover : root.colSurface
-                            border.color: root.colBorder
-                            border.width: 1.5
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: closeHover.hovered ? root.colSurfaceHover : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
                             Behavior on color { ColorAnimation { duration: 120 } }
 
                             Text {
@@ -3075,11 +3074,11 @@ ShellRoot {
                     // 2. Navigation Pills (Teclados | Idiomas | Atajos)
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 36
-                        radius: 18
-                        color: root.colSurface
-                        border.color: root.colBorder
-                        border.width: 1.5
+                        height: 34
+                        radius: 17
+                        color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.05)
+                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
+                        border.width: 1
 
                         RowLayout {
                             anchors.fill: parent
@@ -3090,7 +3089,7 @@ ShellRoot {
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 16
+                                radius: 15
                                 color: root.langTabMode === 0 ? root.colAccent : "transparent"
                                 Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -3101,7 +3100,7 @@ ShellRoot {
                                         text: "󰌌"
                                         color: root.langTabMode === 0 ? root.colBg : root.colAccent
                                         font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 12
+                                        font.pixelSize: 11
                                     }
                                     Text {
                                         text: root.t("lang_tab_keyboards", "Teclados")
@@ -3122,7 +3121,7 @@ ShellRoot {
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 16
+                                radius: 15
                                 color: root.langTabMode === 1 ? root.colAccent : "transparent"
                                 Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -3133,7 +3132,7 @@ ShellRoot {
                                         text: "󰗊"
                                         color: root.langTabMode === 1 ? root.colBg : root.colAccent
                                         font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 12
+                                        font.pixelSize: 11
                                     }
                                     Text {
                                         text: root.t("lang_tab_languages", "Idiomas")
@@ -3157,7 +3156,7 @@ ShellRoot {
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 16
+                                radius: 15
                                 color: root.langTabMode === 2 ? root.colAccent : "transparent"
                                 Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -3168,7 +3167,7 @@ ShellRoot {
                                         text: "󰌑"
                                         color: root.langTabMode === 2 ? root.colBg : root.colAccent
                                         font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 12
+                                        font.pixelSize: 11
                                     }
                                     Text {
                                         text: root.t("lang_tab_hotkeys", "Atajos")
@@ -3207,18 +3206,18 @@ ShellRoot {
 
                             ListView {
                                 Layout.fillWidth: true
-                                implicitHeight: Math.min(180, count * 48)
+                                implicitHeight: Math.min(170, count * 46)
                                 clip: true
-                                spacing: 5
+                                spacing: 4
                                 model: (root.langStatusData && root.langStatusData.layouts) ? root.langStatusData.layouts : []
 
                                 delegate: Rectangle {
                                     width: ListView.view.width
-                                    height: 42
-                                    radius: 12
-                                    color: modelData.active ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.18) : (layRowHover.hovered ? root.colSurfaceHover : root.colSurface)
-                                    border.width: modelData.active ? 2 : 1.5
-                                    border.color: modelData.active ? root.colAccent : root.colBorder
+                                    height: 40
+                                    radius: 10
+                                    color: modelData.active ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15) : (layRowHover.hovered ? root.colSurfaceHover : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.04))
+                                    border.width: 1
+                                    border.color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
                                     Behavior on color { ColorAnimation { duration: 120 } }
 
                                     RowLayout {
@@ -3228,10 +3227,10 @@ ShellRoot {
                                         spacing: 8
 
                                         Rectangle {
-                                            width: 30
-                                            height: 22
-                                            radius: 6
-                                            color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.12)
+                                            width: 28
+                                            height: 20
+                                            radius: 5
+                                            color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: modelData.code_upper || modelData.code || ""
@@ -3268,16 +3267,16 @@ ShellRoot {
                                             text: "󰄬"
                                             color: root.colAccent
                                             font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 14
+                                            font.pixelSize: 13
                                             font.weight: Font.Bold
                                         }
 
                                         // Eliminar layout (solo si hay más de 1)
                                         Rectangle {
                                             visible: !modelData.active && (root.langStatusData?.layouts?.length || 0) > 1
-                                            width: 24
-                                            height: 24
-                                            radius: 12
+                                            width: 22
+                                            height: 22
+                                            radius: 11
                                             color: remLayHover.hovered ? Qt.rgba(1, 0, 0, 0.2) : "transparent"
                                             Text {
                                                 anchors.centerIn: parent
@@ -3291,7 +3290,7 @@ ShellRoot {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    root.runCmd("$HOME/.local/bin/notch-language-helper remove " + modelData.id + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                                                    root.runCmd("$HOME/.local/bin/notch-language-helper remove " + modelData.id + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
                                                 }
                                             }
                                         }
@@ -3302,7 +3301,7 @@ ShellRoot {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            root.runCmd("$HOME/.local/bin/notch-language-helper switch " + modelData.id + " && sleep 0.08 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                                            root.runCmd("$HOME/.local/bin/notch-language-helper switch " + modelData.id + " && sleep 0.08 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
                                             root.kbLayout = modelData.code_upper
                                         }
                                     }
@@ -3315,15 +3314,15 @@ ShellRoot {
                                 spacing: 4
 
                                 Text {
-                                text: root.t("lang_quick_add", "Añadir distribución rápida:")
-                                color: root.colMuted
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 8
+                                    text: root.t("lang_quick_add", "Añadir distribución rápida:")
+                                    color: root.colMuted
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 8
                                 }
 
                                 Flow {
                                     Layout.fillWidth: true
-                                    spacing: 6
+                                    spacing: 5
 
                                     Repeater {
                                         model: [
@@ -3337,12 +3336,12 @@ ShellRoot {
                                             { code: "ru", label: "RU" }
                                         ]
                                         Rectangle {
-                                            width: 48
-                                            height: 26
-                                            radius: 8
-                                            color: addHover.hovered ? root.colSurfaceHover : root.colSurface
-                                            border.width: 1.5
-                                            border.color: addHover.hovered ? root.colAccent : root.colBorder
+                                            width: 44
+                                            height: 24
+                                            radius: 6
+                                            color: addHover.hovered ? root.colSurfaceHover : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.06)
+                                            border.width: 1
+                                            border.color: addHover.hovered ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
                                             Behavior on color { ColorAnimation { duration: 120 } }
                                             Text {
                                                 anchors.centerIn: parent
@@ -3357,7 +3356,7 @@ ShellRoot {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
-                                                    root.runCmd("$HOME/.local/bin/notch-language-helper add " + modelData.code + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                                                    root.runCmd("$HOME/.local/bin/notch-language-helper add " + modelData.code + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
                                                 }
                                             }
                                         }
@@ -3373,11 +3372,11 @@ ShellRoot {
                             // Search bar
                             Rectangle {
                                 Layout.fillWidth: true
-                                height: 36
+                                height: 34
                                 radius: 10
-                                color: root.colSurface
-                                border.width: 2
-                                border.color: langInput.activeFocus ? root.colAccent : root.colBorder
+                                color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.06)
+                                border.width: 1
+                                border.color: langInput.activeFocus ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.12)
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -3389,7 +3388,7 @@ ShellRoot {
                                         text: "󰍉"
                                         color: langInput.activeFocus ? root.colAccent : root.colMuted
                                         font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 13
+                                        font.pixelSize: 12
                                     }
 
                                     TextInput {
@@ -3434,7 +3433,7 @@ ShellRoot {
                             ListView {
                                 id: langListView
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 330
+                                Layout.preferredHeight: 320
                                 clip: true
                                 spacing: 4
 
@@ -3453,14 +3452,14 @@ ShellRoot {
 
                                 delegate: Rectangle {
                                     width: ListView.view.width
-                                    height: 44
-                                    radius: 12
+                                    height: 40
+                                    radius: 10
 
                                     readonly property bool isCurrent: (root.activeLanguage === modelData.code) || ((modelData.locale || "") === (root.langStatusData?.user_locale || ""))
 
-                                    color: isCurrent ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.18) : (locRowHover.hovered ? root.colSurfaceHover : root.colSurface)
-                                    border.width: isCurrent ? 2 : 1.5
-                                    border.color: isCurrent ? root.colAccent : root.colBorder
+                                    color: isCurrent ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15) : (locRowHover.hovered ? root.colSurfaceHover : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.04))
+                                    border.width: 1
+                                    border.color: isCurrent ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
                                     Behavior on color { ColorAnimation { duration: 120 } }
 
                                     RowLayout {
@@ -3486,12 +3485,10 @@ ShellRoot {
                                                     font.weight: isCurrent ? Font.Bold : Font.Normal
                                                 }
                                                 Rectangle {
-                                                    width: Math.max(24, codeTxt.implicitWidth + 8)
-                                                    height: 16
+                                                    width: Math.max(22, codeTxt.implicitWidth + 8)
+                                                    height: 14
                                                     radius: 4
                                                     color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                                                    border.width: 1
-                                                    border.color: root.colBorder
                                                     Text {
                                                         id: codeTxt
                                                         anchors.centerIn: parent
@@ -3519,7 +3516,7 @@ ShellRoot {
                                             text: "󰄬"
                                             color: root.colAccent
                                             font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 14
+                                            font.pixelSize: 13
                                             font.weight: Font.Bold
                                         }
                                     }
@@ -3553,21 +3550,21 @@ ShellRoot {
 
                             ListView {
                                 Layout.fillWidth: true
-                                implicitHeight: Math.min(240, count * 40)
+                                implicitHeight: Math.min(220, count * 36)
                                 clip: true
-                                spacing: 5
+                                spacing: 4
                                 model: (root.langStatusData && root.langStatusData.available_hotkeys) ? root.langStatusData.available_hotkeys : []
 
                                 delegate: Rectangle {
                                     width: ListView.view.width
-                                    height: 36
-                                    radius: 10
+                                    height: 34
+                                    radius: 8
 
                                     readonly property bool isSelected: (modelData.option === (root.langStatusData?.hotkey_option || ""))
 
-                                    color: isSelected ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.18) : (hkRowHover.hovered ? root.colSurfaceHover : root.colSurface)
-                                    border.width: isSelected ? 2 : 1.5
-                                    border.color: isSelected ? root.colAccent : root.colBorder
+                                    color: isSelected ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15) : (hkRowHover.hovered ? root.colSurfaceHover : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.04))
+                                    border.width: 1
+                                    border.color: isSelected ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
                                     Behavior on color { ColorAnimation { duration: 120 } }
 
                                     RowLayout {
@@ -3591,7 +3588,7 @@ ShellRoot {
                                             text: "󰄬"
                                             color: root.colAccent
                                             font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 14
+                                            font.pixelSize: 13
                                             font.weight: Font.Bold
                                         }
                                     }
@@ -3601,7 +3598,7 @@ ShellRoot {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            root.runCmd("$HOME/.local/bin/notch-language-helper set_hotkey " + modelData.option + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                                            root.runCmd("$HOME/.local/bin/notch-language-helper set_hotkey " + modelData.option + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ")
                                         }
                                     }
                                 }
