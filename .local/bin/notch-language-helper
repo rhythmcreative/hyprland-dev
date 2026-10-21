@@ -322,29 +322,24 @@ def persist_hyprland_config(new_layouts_str=None, new_options_str=None):
             pass
 
 def ensure_locale_generated(loc):
-    if HAVE_HYPRLAND_LANGUAGES:
-        try:
-            ok, _ = generate_locale(loc)
-            return ok
-        except Exception:
-            pass
+    clean = loc.lower().replace("-", "").replace(".", "").replace("_", "")
     try:
         out = subprocess.check_output(["locale", "-a"], text=True, timeout=2)
-        clean = loc.lower().replace("-", "").replace(".", "")
-        available = [l.lower().replace("-", "").replace(".", "") for l in out.splitlines()]
-        if any(clean in a or a in clean for a in available):
-            return True
-        base = loc.split(".")[0].split("@")[0]
-        charmap = "UTF-8" if "utf" in loc.lower() else "ISO-8859-1"
-        try:
-            subprocess.run(["sudo", "localedef", "-i", base, "-f", charmap, loc], timeout=5)
-        except Exception:
-            pass
-        subprocess.run(["sudo", "sed", "-i", "-E", f"s/^#[[:space:]]*({re.escape(loc)}|{re.escape(base)})([[:space:]]+.*)/\\1\\2/", "/etc/locale.gen"], timeout=3)
-        subprocess.run(["sudo", "locale-gen"], timeout=35)
+        for line in out.splitlines():
+            cand = line.strip().lower().replace("-", "").replace(".", "").replace("_", "")
+            if clean == cand or (clean.startswith(cand) and len(cand) >= 4) or (cand.startswith(clean) and len(clean) >= 4):
+                return True
+    except Exception:
+        pass
+
+    base = loc.split(".")[0].split("@")[0]
+    charmap = "UTF-8" if "utf" in loc.lower() else "ISO-8859-1"
+    try:
+        subprocess.run(["sudo", "localedef", "-i", base, "-f", charmap, loc], timeout=5)
         return True
     except Exception:
-        return False
+        pass
+    return False
 
 def switch_layout(target):
     devs = get_devices()
@@ -654,24 +649,26 @@ def main():
                 print(json.dumps(POPULAR_LAYOUTS))
         else:
             print(json.dumps(POPULAR_LAYOUTS))
-    elif cmd == "available_locales":
-        if HAVE_HYPRLAND_LANGUAGES:
+    elif cmd in ("available_locales", "available_languages"):
+        loc_file = Path.home() / ".config/rhythm/i18n/locales.json"
+        if loc_file.exists():
             try:
-                locs, _ = get_cached_locales_and_layouts()
+                data = json.loads(loc_file.read_text(encoding="utf-8"))
                 out = []
-                for l in locs:
-                    if "utf-8" in l.charset.lower():
-                        out.append({
-                            "locale": l.code,
-                            "label": l.display_name_es,
-                            "flag": l.flag,
-                            "generated": l.generated
-                        })
+                for code, item in data.items():
+                    out.append({
+                        "code": code,
+                        "locale": item.get("locale", ""),
+                        "name": item.get("name", ""),
+                        "englishName": item.get("englishName", ""),
+                        "label": f"{item.get('name', code)} ({item.get('locale', '')})",
+                        "flag": item.get("flag", "🌐")
+                    })
                 print(json.dumps(out))
+                return
             except Exception:
-                print(json.dumps(POPULAR_LOCALES))
-        else:
-            print(json.dumps(POPULAR_LOCALES))
+                pass
+        print(json.dumps(POPULAR_LOCALES))
     elif cmd == "generate_all":
         if HAVE_HYPRLAND_LANGUAGES:
             try:
