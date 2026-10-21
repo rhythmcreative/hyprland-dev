@@ -2915,15 +2915,15 @@ ShellRoot {
         }
     }
 
-        // Dedicated Right Dynamic Island: Language & Keyboard Selector
+        // Dedicated Right Dynamic Island: Language & Keyboard Selector (fused to top screen edge)
         Item {
             id: langRightCapsule
             anchors.top: parent.top
-            anchors.topMargin: 46
             anchors.right: parent.right
-            anchors.rightMargin: 16
-            width: islandWin.langExpanded ? 390 : 0
-            height: islandWin.langExpanded ? Math.min(620, langCardCol.implicitHeight + 28) : 0
+            anchors.rightMargin: 20
+            readonly property real ala: 16
+            width: islandWin.langExpanded ? 420 : 0
+            height: islandWin.langExpanded ? Math.min(680, langContentCol.implicitHeight + 42) : 0
             clip: true
 
             opacity: islandWin.langExpanded ? 1.0 : 0.0
@@ -2931,600 +2931,439 @@ ShellRoot {
 
             Behavior on width {
                 NumberAnimation {
-                    duration: islandWin.langExpanded ? 320 : 200
-                    easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
-                    easing.overshoot: 1.05
+                    duration: islandWin.langExpanded ? 240 : 180
+                    easing.type: Easing.OutCubic
                 }
             }
 
             Behavior on height {
                 NumberAnimation {
-                    duration: islandWin.langExpanded ? 340 : 200
-                    easing.type: islandWin.langExpanded ? Easing.OutBack : Easing.InCubic
-                    easing.overshoot: 1.05
+                    duration: islandWin.langExpanded ? 260 : 180
+                    easing.type: Easing.OutCubic
                 }
             }
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: islandWin.langExpanded ? 220 : 160
+                    duration: islandWin.langExpanded ? 200 : 140
                     easing.type: Easing.OutCubic
                 }
             }
 
-            // Glass/Notch background card with rounded corners
-            Rectangle {
+            // Silueta de Dynamic Island con alas invertidas fundidas al borde superior de la pantalla
+            SiluetaIsla {
+                id: langSilueta
                 anchors.fill: parent
-                radius: 20
-                color: root.colBg
-                border.width: 1
-                border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.12)
+                ala: langRightCapsule.ala
+                cuerpoRadio: islandWin.langExpanded ? 24 : 12
+                relleno: root.colBg
+                lado: "arriba"
 
-                // Subtle inner glow/border highlight
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: 19
-                    color: "transparent"
-                    border.width: 1
-                    border.color: Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.22)
+                Behavior on cuerpoRadio {
+                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
                 }
             }
 
-            ColumnLayout {
-                id: langCardCol
+            // Area de contenido (entre las alas y con margen superior para no pisar el borde de la pantalla)
+            Item {
+                id: langContentArea
                 anchors.fill: parent
-                anchors.margins: 14
-                spacing: 10
+                anchors.leftMargin: langRightCapsule.ala + 6
+                anchors.rightMargin: langRightCapsule.ala + 6
+                anchors.topMargin: 12
+                anchors.bottomMargin: 14
+                clip: true
 
-                // 1. Header (Title, current active badge, Close button)
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
+                ColumnLayout {
+                    id: langContentCol
+                    anchors.fill: parent
+                    spacing: 12
 
+                    // Dynamic Island top grabber (identico al centro)
                     Rectangle {
-                        width: 28
-                        height: 28
-                        radius: 14
-                        color: Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15)
-                        Text {
-                            anchors.centerIn: parent
-                            text: "🌐"
-                            font.pixelSize: 13
-                        }
+                        width: 36
+                        height: 4
+                        radius: 2
+                        color: root.colMuted
+                        opacity: 0.4
+                        Layout.alignment: Qt.AlignHCenter
                     }
 
-                    ColumnLayout {
-                        spacing: 1
-                        Text {
-                            text: root.t("island_language", "Idioma y Teclado")
-                            color: root.colFg
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 12
-                            font.weight: Font.Bold
-                        }
-                        Text {
-                            text: (root.activeLanguage === "es" ? "🇪🇸 Español" : (root.activeLanguage === "en" ? "🇺🇸 English" : root.activeLanguage.toUpperCase())) + " · " + (root.kbLayout || "US")
-                            color: root.colAccent
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 9
-                            font.weight: Font.Medium
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    // Close Button
-                    Rectangle {
-                        width: 26
-                        height: 26
-                        radius: 13
-                        color: closeHover.hovered ? Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.15) : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.06)
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Text {
-                            anchors.centerIn: parent
-                            text: "✕"
-                            color: root.colMuted
-                            font.pixelSize: 10
-                            font.weight: Font.Bold
-                        }
-                        HoverHandler { id: closeHover }
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: islandWin.langExpanded = false
-                        }
-                    }
-                }
-
-                // 2. Mode Selector Tabs: [ Teclados | Idiomas | Atajos ]
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 32
-                    radius: 16
-                    color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.05)
-                    border.width: 1
-                    border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-
+                    // 1. Header (Icono Nerd Font, Titulo, Estado actual y boton de cierre)
                     RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 2
-                        spacing: 2
-
-                        // Tab 0: Keyboards
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            radius: 14
-                            color: root.langTabMode === 0 ? root.colAccent : "transparent"
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 4
-                                Text {
-                                    text: "⌨️"
-                                    font.pixelSize: 9
-                                }
-                                Text {
-                                    text: root.t("lang_tab_keyboards", "Teclados")
-                                    color: root.langTabMode === 0 ? root.colBg : root.colFg
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                }
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.langTabMode = 0
-                            }
-                        }
-
-                        // Tab 1: Languages (System & Desktop)
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            radius: 14
-                            color: root.langTabMode === 1 ? root.colAccent : "transparent"
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 4
-                                Text {
-                                    text: "🌐"
-                                    font.pixelSize: 9
-                                }
-                                Text {
-                                    text: root.t("lang_tab_languages", "Idiomas")
-                                    color: root.langTabMode === 1 ? root.colBg : root.colFg
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                }
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    root.langTabMode = 1
-                                    if (root.availableLocalesList.length === 0) availableLocalesProc.running = true
-                                }
-                            }
-                        }
-
-                        // Tab 2: Shortcuts
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            radius: 14
-                            color: root.langTabMode === 2 ? root.colAccent : "transparent"
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: 4
-                                Text {
-                                    text: "⚡"
-                                    font.pixelSize: 9
-                                }
-                                Text {
-                                    text: root.t("lang_tab_hotkeys", "Atajos")
-                                    color: root.langTabMode === 2 ? root.colBg : root.colFg
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                }
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.langTabMode = 2
-                            }
-                        }
-                    }
-                }
-
-                // 3. Tab Content Area
-                StackLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    currentIndex: root.langTabMode
-
-                    // ============================================
-                    // TAB 0: KEYBOARDS (Current, switch, quick add)
-                    // ============================================
-                    ColumnLayout {
+                        Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: root.t("lang_active_layouts", "Distribuciones configuradas")
-                            color: root.colMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
+                        Rectangle {
+                            width: 30
+                            height: 30
+                            radius: 15
+                            color: root.colSurface
+                            border.color: root.colBorder
+                            border.width: 1
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "󰗊"
+                                color: root.colAccent
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 14
+                            }
                         }
 
-                        // Configured Layouts List
-                        ListView {
-                            Layout.fillWidth: true
-                            implicitHeight: Math.min(160, count * 44)
-                            clip: true
-                            model: (root.langStatusData && root.langStatusData.layouts) ? root.langStatusData.layouts : []
-                            spacing: 4
-                            delegate: Rectangle {
-                                width: ListView.view.width
-                                height: 38
-                                radius: 10
-                                color: modelData.active ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.18) : (rowHover.hovered ? Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08) : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.03))
-                                border.width: 1
-                                border.color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                                Behavior on color { ColorAnimation { duration: 120 } }
+                        ColumnLayout {
+                            spacing: 1
+                            Text {
+                                text: root.t("island_language", "Idioma y Teclado")
+                                color: root.colFg
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                            }
+                            Text {
+                                text: (root.activeLanguage === "es" ? "Español" : (root.activeLanguage === "en" ? "English" : root.activeLanguage.toUpperCase())) + " · " + (root.kbLayout || "US")
+                                color: root.colAccent
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 9
+                                font.weight: Font.Medium
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        // Close Pill Button
+                        Rectangle {
+                            width: 28
+                            height: 28
+                            radius: 14
+                            color: closeHover.hovered ? root.colSurfaceHover : root.colSurface
+                            border.color: root.colBorder
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "󰅖"
+                                color: root.colFg
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 12
+                                font.weight: Font.Bold
+                            }
+                            HoverHandler { id: closeHover }
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: islandWin.langExpanded = false
+                            }
+                        }
+                    }
+
+                    // 2. Navigation Pills (Teclados | Idiomas | Atajos)
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 34
+                        radius: 17
+                        color: root.colSurface
+                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
+                        border.width: 1
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            spacing: 2
+
+                            // Tab 0: Distribuciones de teclado
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 15
+                                color: root.langTabMode === 0 ? root.colAccent : "transparent"
+                                Behavior on color { ColorAnimation { duration: 150 } }
 
                                 RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
-                                    anchors.rightMargin: 10
-                                    spacing: 8
-
-                                    Rectangle {
-                                        width: 26
-                                        height: 20
-                                        radius: 4
-                                        color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.12)
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: modelData.code_upper || modelData.code || ""
-                                            color: modelData.active ? root.colBg : root.colFg
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                            font.weight: Font.Bold
-                                        }
-                                    }
-
-                                    ColumnLayout {
-                                        spacing: 1
-                                        Text {
-                                            text: modelData.label || modelData.code || ""
-                                            color: root.colFg
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 10
-                                            font.weight: modelData.active ? Font.Bold : Font.Normal
-                                            elide: Text.ElideRight
-                                        }
-                                        Text {
-                                            visible: modelData.active
-                                            text: root.t("lang_active", "Activo ahora")
-                                            color: root.colAccent
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                        }
-                                    }
-
-                                    Item { Layout.fillWidth: true }
-
+                                    anchors.centerIn: parent
+                                    spacing: 5
                                     Text {
-                                        visible: modelData.active
-                                        text: "✓"
-                                        color: root.colAccent
+                                        text: "󰌌"
+                                        color: root.langTabMode === 0 ? root.colBg : root.colAccent
                                         font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 12
+                                        font.pixelSize: 11
+                                    }
+                                    Text {
+                                        text: root.t("lang_tab_keyboards", "Teclados")
+                                        color: root.langTabMode === 0 ? root.colBg : root.colFg
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 9
                                         font.weight: Font.Bold
                                     }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.langTabMode = 0
+                                }
+                            }
 
-                                    // Remove button (only if more than 1 layout)
-                                    Rectangle {
-                                        visible: !modelData.active && (root.langStatusData?.layouts?.length || 0) > 1
-                                        width: 20
-                                        height: 20
-                                        radius: 10
-                                        color: remHover.hovered ? Qt.rgba(1, 0, 0, 0.2) : "transparent"
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "✕"
-                                            color: remHover.hovered ? "#ff5555" : root.colMuted
-                                            font.pixelSize: 9
-                                        }
-                                        HoverHandler { id: remHover }
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                root.runCmd("$HOME/.local/bin/notch-language-helper remove " + modelData.id + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
-                                            }
-                                        }
+                            // Tab 1: Idiomas del sistema
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 15
+                                color: root.langTabMode === 1 ? root.colAccent : "transparent"
+                                Behavior on color { ColorAnimation { duration: 150 } }
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+                                    Text {
+                                        text: "󰗊"
+                                        color: root.langTabMode === 1 ? root.colBg : root.colAccent
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 11
+                                    }
+                                    Text {
+                                        text: root.t("lang_tab_languages", "Idiomas")
+                                        color: root.langTabMode === 1 ? root.colBg : root.colFg
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
                                     }
                                 }
-
-                                HoverHandler { id: rowHover }
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        root.runCmd("$HOME/.local/bin/notch-language-helper switch " + modelData.id + " && sleep 0.08 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
-                                        root.kbLayout = modelData.code_upper
+                                        root.langTabMode = 1
+                                        if (root.availableLocalesList.length === 0) availableLocalesProc.running = true
                                     }
                                 }
                             }
-                        }
 
-                        // Quick Add Popular Layouts
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 4
-
-                            Text {
-                                text: root.t("lang_quick_add", "Añadir distribución rápida:")
-                                color: root.colMuted
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 8
-                            }
-
-                            Flow {
+                            // Tab 2: Atajos de cambio
+                            Rectangle {
                                 Layout.fillWidth: true
-                                spacing: 5
+                                Layout.fillHeight: true
+                                radius: 15
+                                color: root.langTabMode === 2 ? root.colAccent : "transparent"
+                                Behavior on color { ColorAnimation { duration: 150 } }
 
-                                Repeater {
-                                    model: [
-                                        { code: "us", label: "US" },
-                                        { code: "es", label: "ES" },
-                                        { code: "latam", label: "LATAM" },
-                                        { code: "fr", label: "FR" },
-                                        { code: "de", label: "DE" },
-                                        { code: "gb", label: "UK" },
-                                        { code: "br", label: "BR" },
-                                        { code: "ru", label: "RU" }
-                                    ]
-                                    Rectangle {
-                                        width: 40
-                                        height: 22
-                                        radius: 6
-                                        color: addLayHover.hovered ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.25) : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.06)
-                                        border.width: 1
-                                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
-                                        Behavior on color { ColorAnimation { duration: 120 } }
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "+ " + modelData.label
-                                            color: root.colFg
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                            font.weight: Font.Bold
-                                        }
-                                        HoverHandler { id: addLayHover }
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                root.runCmd("$HOME/.local/bin/notch-language-helper add " + modelData.code + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
-                                            }
-                                        }
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+                                    Text {
+                                        text: "󰌑"
+                                        color: root.langTabMode === 2 ? root.colBg : root.colAccent
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 11
                                     }
+                                    Text {
+                                        text: root.t("lang_tab_hotkeys", "Atajos")
+                                        color: root.langTabMode === 2 ? root.colBg : root.colFg
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.langTabMode = 2
                                 }
                             }
                         }
                     }
 
-                    // ============================================
-                    // TAB 1: LANGUAGES (Omarchy 51 Locales)
-                    // ============================================
-                    ColumnLayout {
-                        spacing: 8
+                    // 3. Contenedor de Vistas
+                    StackLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        currentIndex: root.langTabMode
 
-                        // Search Input
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 32
-                            radius: 10
-                            color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.06)
-                            border.width: 1
-                            border.color: langInput.activeFocus ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
+                        // ── TAB 0: TECLADOS ──
+                        ColumnLayout {
+                            spacing: 8
 
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 8
-                                spacing: 6
+                            Text {
+                                text: root.t("lang_active_layouts", "Distribuciones configuradas")
+                                color: root.colMuted
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                            }
 
-                                Text {
-                                    text: "🔍"
-                                    font.pixelSize: 10
-                                }
+                            ListView {
+                                Layout.fillWidth: true
+                                implicitHeight: Math.min(180, count * 46)
+                                clip: true
+                                spacing: 4
+                                model: (root.langStatusData && root.langStatusData.layouts) ? root.langStatusData.layouts : []
 
-                                TextInput {
-                                    id: langInput
-                                    Layout.fillWidth: true
-                                    color: root.colFg
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 9
-                                    clip: true
-                                    text: root.langSearchQuery
-                                    onTextChanged: root.langSearchQuery = text
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 40
+                                    radius: 10
+                                    color: modelData.active ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15) : (layRowHover.hovered ? root.colSurfaceHover : root.colSurface)
+                                    border.width: 1
+                                    border.color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
+                                    Behavior on color { ColorAnimation { duration: 120 } }
 
-                                    Text {
-                                        visible: !langInput.text && !langInput.activeFocus
-                                        text: root.t("lang_search_placeholder", "Buscar idioma (ej. Español, English, Deutsch...)")
-                                        color: Qt.rgba(root.colMuted.r, root.colMuted.g, root.colMuted.b, 0.6)
-                                        font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 9
-                                        anchors.verticalCenter: parent.verticalCenter
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        spacing: 8
+
+                                        Rectangle {
+                                            width: 28
+                                            height: 22
+                                            radius: 6
+                                            color: modelData.active ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: modelData.code_upper || modelData.code || ""
+                                                color: modelData.active ? root.colBg : root.colFg
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
+                                            }
+                                        }
+
+                                        ColumnLayout {
+                                            spacing: 1
+                                            Text {
+                                                text: modelData.label || modelData.code || ""
+                                                color: root.colFg
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 10
+                                                font.weight: modelData.active ? Font.Bold : Font.Normal
+                                                elide: Text.ElideRight
+                                            }
+                                            Text {
+                                                visible: modelData.active
+                                                text: root.t("lang_active", "Activo ahora")
+                                                color: root.colAccent
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 8
+                                            }
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+
+                                        Text {
+                                            visible: modelData.active
+                                            text: "󰄬"
+                                            color: root.colAccent
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 13
+                                            font.weight: Font.Bold
+                                        }
+
+                                        // Eliminar layout (solo si hay más de 1)
+                                        Rectangle {
+                                            visible: !modelData.active && (root.langStatusData?.layouts?.length || 0) > 1
+                                            width: 22
+                                            height: 22
+                                            radius: 11
+                                            color: remLayHover.hovered ? Qt.rgba(1, 0, 0, 0.2) : "transparent"
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "󰅖"
+                                                color: remLayHover.hovered ? "#ff5555" : root.colMuted
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 10
+                                            }
+                                            HoverHandler { id: remLayHover }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    root.runCmd("$HOME/.local/bin/notch-language-helper remove " + modelData.id + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                                                }
+                                            }
+                                        }
                                     }
-                                }
 
-                                Text {
-                                    visible: langInput.text.length > 0
-                                    text: "✕"
-                                    color: root.colMuted
-                                    font.pixelSize: 9
+                                    HoverHandler { id: layRowHover }
                                     MouseArea {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            langInput.text = ""
-                                            root.langSearchQuery = ""
+                                            root.runCmd("$HOME/.local/bin/notch-language-helper switch " + modelData.id + " && sleep 0.08 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                                            root.kbLayout = modelData.code_upper
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        // Scrollable List of Omarchy Languages
-                        ListView {
-                            id: langListView
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 320
-                            clip: true
-                            spacing: 4
+                            // Quick Add Popular Layouts
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
 
-                            model: {
-                                let list = (root.availableLocalesList && root.availableLocalesList.length > 0) ? root.availableLocalesList : []
-                                let q = (root.langSearchQuery || "").trim().toLowerCase()
-                                if (!q) return list
-                                return list.filter(function(item) {
-                                    let n = (item.name || "").toLowerCase()
-                                    let en = (item.englishName || "").toLowerCase()
-                                    let c = (item.code || "").toLowerCase()
-                                    let loc = (item.locale || "").toLowerCase()
-                                    return n.indexOf(q) !== -1 || en.indexOf(q) !== -1 || c.indexOf(q) !== -1 || loc.indexOf(q) !== -1
-                                })
-                            }
+                                Text {
+                                    text: root.t("lang_quick_add", "Añadir distribución rápida:")
+                                    color: root.colMuted
+                                    font.family: "JetBrainsMono Nerd Font"
+                                    font.pixelSize: 8
+                                }
 
-                            delegate: Rectangle {
-                                width: ListView.view.width
-                                height: 42
-                                radius: 10
+                                Flow {
+                                    Layout.fillWidth: true
+                                    spacing: 5
 
-                                readonly property bool isCurrent: (root.activeLanguage === modelData.code) || ((modelData.locale || "") === (root.langStatusData?.user_locale || ""))
-
-                                color: isCurrent ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.18) : (langRowHover.hovered ? Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08) : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.03))
-                                border.width: 1
-                                border.color: isCurrent ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                                Behavior on color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
-                                    anchors.rightMargin: 10
-                                    spacing: 10
-
-                                    // Flag
-                                    Text {
-                                        text: modelData.flag || "🌐"
-                                        font.pixelSize: 16
-                                    }
-
-                                    ColumnLayout {
-                                        spacing: 1
-                                        RowLayout {
-                                            spacing: 6
+                                    Repeater {
+                                        model: [
+                                            { code: "us", label: "US" },
+                                            { code: "es", label: "ES" },
+                                            { code: "latam", label: "LATAM" },
+                                            { code: "fr", label: "FR" },
+                                            { code: "de", label: "DE" },
+                                            { code: "gb", label: "UK" },
+                                            { code: "br", label: "BR" },
+                                            { code: "ru", label: "RU" }
+                                        ]
+                                        Rectangle {
+                                            width: 44
+                                            height: 24
+                                            radius: 8
+                                            color: addHover.hovered ? root.colSurfaceHover : root.colSurface
+                                            border.width: 1
+                                            border.color: addHover.hovered ? root.colAccent : root.colBorder
+                                            Behavior on color { ColorAnimation { duration: 120 } }
                                             Text {
-                                                text: modelData.name || modelData.code || ""
+                                                anchors.centerIn: parent
+                                                text: "+ " + modelData.label
                                                 color: root.colFg
                                                 font.family: "JetBrainsMono Nerd Font"
-                                                font.pixelSize: 10
-                                                font.weight: isCurrent ? Font.Bold : Font.Normal
+                                                font.pixelSize: 8
+                                                font.weight: Font.Bold
                                             }
-                                            Rectangle {
-                                                width: Math.max(20, codeTxt.implicitWidth + 8)
-                                                height: 14
-                                                radius: 4
-                                                color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                                                Text {
-                                                    id: codeTxt
-                                                    anchors.centerIn: parent
-                                                    text: (modelData.code || "").toUpperCase()
-                                                    color: root.colMuted
-                                                    font.family: "JetBrainsMono Nerd Font"
-                                                    font.pixelSize: 7
-                                                    font.weight: Font.Bold
+                                            HoverHandler { id: addHover }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    root.runCmd("$HOME/.local/bin/notch-language-helper add " + modelData.code + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
                                                 }
                                             }
                                         }
-
-                                        Text {
-                                            text: (modelData.englishName && modelData.englishName !== modelData.name ? (modelData.englishName + " · ") : "") + (modelData.locale || "")
-                                            color: isCurrent ? root.colAccent : root.colMuted
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                        }
-                                    }
-
-                                    Item { Layout.fillWidth: true }
-
-                                    Text {
-                                        visible: isCurrent
-                                        text: "✓"
-                                        color: root.colAccent
-                                        font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 12
-                                        font.weight: Font.Bold
-                                    }
-                                }
-
-                                HoverHandler { id: langRowHover }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        let code = modelData.code
-                                        root.activeLanguage = code
-                                        root.runCmd("$HOME/.local/bin/rhythm-language set " + code)
-                                        islandWin.langExpanded = false
                                     }
                                 }
                             }
                         }
-                    }
 
-                    // ============================================
-                    // TAB 2: HOTKEYS (Switch shortcuts)
-                    // ============================================
-                    ColumnLayout {
-                        spacing: 8
+                        // ── TAB 1: IDIOMAS (Omarchy 51 Locales) ──
+                        ColumnLayout {
+                            spacing: 8
 
-                        Text {
-                            text: root.t("lang_switch_hotkey_title", "Atajo de cambio de distribución:")
-                            color: root.colMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                        }
-
-                        ListView {
-                            Layout.fillWidth: true
-                            implicitHeight: Math.min(220, count * 38)
-                            clip: true
-                            model: (root.langStatusData && root.langStatusData.available_hotkeys) ? root.langStatusData.available_hotkeys : []
-                            spacing: 4
-                            delegate: Rectangle {
-                                width: ListView.view.width
+                            // Search bar
+                            Rectangle {
+                                Layout.fillWidth: true
                                 height: 34
-                                radius: 8
-
-                                readonly property bool isSelected: (modelData.option === (root.langStatusData?.hotkey_option || ""))
-
-                                color: isSelected ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.18) : (hkHover.hovered ? Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08) : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.03))
+                                radius: 10
+                                color: root.colSurface
                                 border.width: 1
-                                border.color: isSelected ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                                Behavior on color { ColorAnimation { duration: 120 } }
+                                border.color: langInput.activeFocus ? root.colAccent : root.colBorder
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -3533,57 +3372,247 @@ ShellRoot {
                                     spacing: 8
 
                                     Text {
-                                        text: modelData.label || "None"
+                                        text: "󰍉"
+                                        color: langInput.activeFocus ? root.colAccent : root.colMuted
+                                        font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 12
+                                    }
+
+                                    TextInput {
+                                        id: langInput
+                                        Layout.fillWidth: true
                                         color: root.colFg
                                         font.family: "JetBrainsMono Nerd Font"
                                         font.pixelSize: 9
-                                        font.weight: isSelected ? Font.Bold : Font.Normal
-                                    }
+                                        clip: true
+                                        text: root.langSearchQuery
+                                        onTextChanged: root.langSearchQuery = text
 
-                                    Item { Layout.fillWidth: true }
+                                        Text {
+                                            visible: !langInput.text && !langInput.activeFocus
+                                            text: root.t("lang_search_placeholder", "Buscar idioma (Español, English, Deutsch...)")
+                                            color: Qt.rgba(root.colMuted.r, root.colMuted.g, root.colMuted.b, 0.6)
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 9
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
 
                                     Text {
-                                        visible: isSelected
-                                        text: "✓"
-                                        color: root.colAccent
+                                        visible: langInput.text.length > 0
+                                        text: "󰅖"
+                                        color: root.colMuted
                                         font.family: "JetBrainsMono Nerd Font"
                                         font.pixelSize: 11
-                                        font.weight: Font.Bold
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                langInput.text = ""
+                                                root.langSearchQuery = ""
+                                            }
+                                        }
                                     }
                                 }
+                            }
 
-                                HoverHandler { id: hkHover }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        root.runCmd("$HOME/.local/bin/notch-language-helper set_hotkey " + modelData.option + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                            // Lista de Idiomas
+                            ListView {
+                                id: langListView
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 340
+                                clip: true
+                                spacing: 4
+
+                                model: {
+                                    let list = (root.availableLocalesList && root.availableLocalesList.length > 0) ? root.availableLocalesList : []
+                                    let q = (root.langSearchQuery || "").trim().toLowerCase()
+                                    if (!q) return list
+                                    return list.filter(function(item) {
+                                        let n = (item.name || "").toLowerCase()
+                                        let en = (item.englishName || "").toLowerCase()
+                                        let c = (item.code || "").toLowerCase()
+                                        let loc = (item.locale || "").toLowerCase()
+                                        return n.indexOf(q) !== -1 || en.indexOf(q) !== -1 || c.indexOf(q) !== -1 || loc.indexOf(q) !== -1
+                                    })
+                                }
+
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 42
+                                    radius: 10
+
+                                    readonly property bool isCurrent: (root.activeLanguage === modelData.code) || ((modelData.locale || "") === (root.langStatusData?.user_locale || ""))
+
+                                    color: isCurrent ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15) : (locRowHover.hovered ? root.colSurfaceHover : root.colSurface)
+                                    border.width: 1
+                                    border.color: isCurrent ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
+                                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        spacing: 10
+
+                                        Text {
+                                            text: modelData.flag || "󰗊"
+                                            font.pixelSize: 16
+                                        }
+
+                                        ColumnLayout {
+                                            spacing: 1
+                                            RowLayout {
+                                                spacing: 6
+                                                Text {
+                                                    text: modelData.name || modelData.code || ""
+                                                    color: root.colFg
+                                                    font.family: "JetBrainsMono Nerd Font"
+                                                    font.pixelSize: 10
+                                                    font.weight: isCurrent ? Font.Bold : Font.Normal
+                                                }
+                                                Rectangle {
+                                                    width: Math.max(22, codeTxt.implicitWidth + 8)
+                                                    height: 14
+                                                    radius: 4
+                                                    color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
+                                                    Text {
+                                                        id: codeTxt
+                                                        anchors.centerIn: parent
+                                                        text: (modelData.code || "").toUpperCase()
+                                                        color: root.colMuted
+                                                        font.family: "JetBrainsMono Nerd Font"
+                                                        font.pixelSize: 7
+                                                        font.weight: Font.Bold
+                                                    }
+                                                }
+                                            }
+
+                                            Text {
+                                                text: (modelData.englishName && modelData.englishName !== modelData.name ? (modelData.englishName + " · ") : "") + (modelData.locale || "")
+                                                color: isCurrent ? root.colAccent : root.colMuted
+                                                font.family: "JetBrainsMono Nerd Font"
+                                                font.pixelSize: 8
+                                            }
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+
+                                        Text {
+                                            visible: isCurrent
+                                            text: "󰄬"
+                                            color: root.colAccent
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 13
+                                            font.weight: Font.Bold
+                                        }
+                                    }
+
+                                    HoverHandler { id: locRowHover }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            let code = modelData.code
+                                            root.activeLanguage = code
+                                            root.runCmd("$HOME/.local/bin/rhythm-language set " + code)
+                                            islandWin.langExpanded = false
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── TAB 2: ATAJOS DE CAMBIO ──
+                        ColumnLayout {
+                            spacing: 8
+
+                            Text {
+                                text: root.t("lang_switch_hotkey_title", "Atajo de cambio de distribución:")
+                                color: root.colMuted
+                                font.family: "JetBrainsMono Nerd Font"
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                            }
+
+                            ListView {
+                                Layout.fillWidth: true
+                                implicitHeight: Math.min(240, count * 38)
+                                clip: true
+                                spacing: 4
+                                model: (root.langStatusData && root.langStatusData.available_hotkeys) ? root.langStatusData.available_hotkeys : []
+
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 34
+                                    radius: 8
+
+                                    readonly property bool isSelected: (modelData.option === (root.langStatusData?.hotkey_option || ""))
+
+                                    color: isSelected ? Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15) : (hkRowHover.hovered ? root.colSurfaceHover : root.colSurface)
+                                    border.width: 1
+                                    border.color: isSelected ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
+                                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        spacing: 8
+
+                                        Text {
+                                            text: modelData.label || "None"
+                                            color: root.colFg
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 9
+                                            font.weight: isSelected ? Font.Bold : Font.Normal
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+
+                                        Text {
+                                            visible: isSelected
+                                            text: "󰄬"
+                                            color: root.colAccent
+                                            font.family: "JetBrainsMono Nerd Font"
+                                            font.pixelSize: 13
+                                            font.weight: Font.Bold
+                                        }
+                                    }
+
+                                    HoverHandler { id: hkRowHover }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            root.runCmd("$HOME/.local/bin/notch-language-helper set_hotkey " + modelData.option + " && sleep 0.1 && quickshell ipc -p $HOME/.config/quickshell/waybar-island/shell.qml --any-display call island reloadLanguage ''")
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                // 4. Footer info
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
+                    // 4. Footer info
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
 
-                    Text {
-                        text: "Omarchy i18n · 51 " + root.t("lang_available_count", "idiomas soportados")
-                        color: root.colMuted
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 8
-                    }
+                        Text {
+                            text: "Omarchy i18n · 51 " + root.t("lang_available_count", "idiomas soportados")
+                            color: root.colMuted
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 8
+                        }
 
-                    Item { Layout.fillWidth: true }
+                        Item { Layout.fillWidth: true }
 
-                    Text {
-                        text: root.t("sysmon_esc_close", "ESC para cerrar")
-                        color: Qt.rgba(root.colMuted.r, root.colMuted.g, root.colMuted.b, 0.6)
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 8
+                        Text {
+                            text: root.t("sysmon_esc_close", "ESC para cerrar")
+                            color: Qt.rgba(root.colMuted.r, root.colMuted.g, root.colMuted.b, 0.6)
+                            font.family: "JetBrainsMono Nerd Font"
+                            font.pixelSize: 8
+                        }
                     }
                 }
             }
