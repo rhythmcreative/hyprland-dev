@@ -223,9 +223,15 @@ def main():
 
     elif cmd == 'on':
         try:
-            subprocess.run(['rfkill', 'unblock', 'bluetooth'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for rf in ['rfkill', '/usr/sbin/rfkill', '/sbin/rfkill']:
+                bin_p = shutil.which(rf) or (rf if os.path.exists(rf) else None)
+                if bin_p:
+                    try:
+                        subprocess.run([bin_p, 'unblock', 'bluetooth'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        break
+                    except Exception:
+                        pass
             subprocess.run(['bluetoothctl', 'power', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(0.3)
             print(json.dumps({'status': 'ok', 'powered': True}))
         except Exception as e:
             print(json.dumps({'status': 'error', 'message': str(e)}))
@@ -233,7 +239,6 @@ def main():
     elif cmd == 'off':
         try:
             subprocess.run(['bluetoothctl', 'power', 'off'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(0.3)
             print(json.dumps({'status': 'ok', 'powered': False}))
         except Exception as e:
             print(json.dumps({'status': 'error', 'message': str(e)}))
@@ -243,12 +248,17 @@ def main():
             status = get_bt_status()
             if status['powered']:
                 subprocess.run(['bluetoothctl', 'power', 'off'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                time.sleep(0.3)
                 print(json.dumps({'status': 'ok', 'powered': False}))
             else:
-                subprocess.run(['rfkill', 'unblock', 'bluetooth'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                for rf in ['rfkill', '/usr/sbin/rfkill', '/sbin/rfkill']:
+                    bin_p = shutil.which(rf) or (rf if os.path.exists(rf) else None)
+                    if bin_p:
+                        try:
+                            subprocess.run([bin_p, 'unblock', 'bluetooth'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            break
+                        except Exception:
+                            pass
                 subprocess.run(['bluetoothctl', 'power', 'on'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                time.sleep(0.3)
                 print(json.dumps({'status': 'ok', 'powered': True}))
         except Exception as e:
             print(json.dumps({'status': 'error', 'message': str(e)}))

@@ -1050,7 +1050,8 @@ ShellRoot {
 
     // Process helper to run quick commands with full environment
     function runCmd(cmd) {
-        const envInit = "export XDG_RUNTIME_DIR=\"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}\"; " +
+        const envInit = "export PATH=\"$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH\"; " +
+                        "export XDG_RUNTIME_DIR=\"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}\"; " +
                         "[ -z \"$WAYLAND_DISPLAY\" ] && export WAYLAND_DISPLAY=\"wayland-1\"; " +
                         "[ -z \"$HYPRLAND_INSTANCE_SIGNATURE\" ] && export HYPRLAND_INSTANCE_SIGNATURE=$(ls -t \"$XDG_RUNTIME_DIR/hypr/\" 2>/dev/null | grep -v '\\.lock$' | head -n1); "
         Quickshell.execDetached(["bash", "-c", envInit + cmd])
@@ -1469,7 +1470,7 @@ ShellRoot {
 
     Process {
         id: btStatusProc
-        command: ["bash", "-c", "$HOME/.local/bin/notch-bt-helper status"]
+        command: ["bash", "-c", "export PATH=\"$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH\"; if command -v notch-bt-helper >/dev/null 2>&1; then notch-bt-helper status; elif [ -x \"$HOME/.local/bin/notch-bt-helper\" ]; then \"$HOME/.local/bin/notch-bt-helper\" status; else pow=$(bluetoothctl show 2>/dev/null | grep -q 'Powered: yes' && echo 'true' || echo 'false'); echo '{\"powered\": '\$pow', \"discovering\": false, \"devices\": []}'; fi"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -1504,7 +1505,7 @@ ShellRoot {
 
     Timer {
         id: btDebounceSyncTimer
-        interval: 350
+        interval: 900
         repeat: false
         onTriggered: {
             btStatusProc.running = true
@@ -5022,7 +5023,7 @@ ShellRoot {
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
                                             acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                            onClicked: mouse => {
+                                            onClicked: (mouse) => {
                                                 if (mouse.button === Qt.RightButton) {
                                                     if (root.pairRequest.active) {
                                                         islandWin.controlSubView = 6
@@ -5034,9 +5035,9 @@ ShellRoot {
                                                     const newState = !root.btEnabled
                                                     root.btEnabled = newState
                                                     if (newState) {
-                                                        root.runCmd("$HOME/.local/bin/notch-bt-helper on")
+                                                        root.runCmd("rfkill unblock bluetooth 2>/dev/null || /usr/sbin/rfkill unblock bluetooth 2>/dev/null || true; bluetoothctl power on 2>/dev/null || true; command -v notch-bt-helper >/dev/null 2>&1 && notch-bt-helper on || [ -x \"$HOME/.local/bin/notch-bt-helper\" ] && \"$HOME/.local/bin/notch-bt-helper\" on || true")
                                                     } else {
-                                                        root.runCmd("$HOME/.local/bin/notch-bt-helper off")
+                                                        root.runCmd("bluetoothctl power off 2>/dev/null || true; command -v notch-bt-helper >/dev/null 2>&1 && notch-bt-helper off || [ -x \"$HOME/.local/bin/notch-bt-helper\" ] && \"$HOME/.local/bin/notch-bt-helper\" off || true")
                                                     }
                                                     btDebounceSyncTimer.restart()
                                                 }
@@ -7059,11 +7060,9 @@ ShellRoot {
                                                 const newState = !root.btEnabled
                                                 root.btEnabled = newState
                                                 if (newState) {
-                                                    root.runCmd("$HOME/.local/bin/notch-bt-helper on")
-                                                    root.runCmd("$HOME/.local/bin/notch-bt-helper scan")
+                                                    root.runCmd("rfkill unblock bluetooth 2>/dev/null || /usr/sbin/rfkill unblock bluetooth 2>/dev/null || true; bluetoothctl power on 2>/dev/null || true; command -v notch-bt-helper >/dev/null 2>&1 && notch-bt-helper on || [ -x \"$HOME/.local/bin/notch-bt-helper\" ] && \"$HOME/.local/bin/notch-bt-helper\" on || true; command -v notch-bt-helper >/dev/null 2>&1 && notch-bt-helper scan || true")
                                                 } else {
-                                                    root.runCmd("$HOME/.local/bin/notch-bt-helper off")
-                                                    root.runCmd("$HOME/.local/bin/notch-bt-helper stop_scan")
+                                                    root.runCmd("bluetoothctl power off 2>/dev/null || true; command -v notch-bt-helper >/dev/null 2>&1 && notch-bt-helper off || [ -x \"$HOME/.local/bin/notch-bt-helper\" ] && \"$HOME/.local/bin/notch-bt-helper\" off || true")
                                                 }
                                                 btDebounceSyncTimer.restart()
                                             }
@@ -7126,8 +7125,7 @@ ShellRoot {
                                     cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         root.btEnabled = true
-                                        root.runCmd("$HOME/.local/bin/notch-bt-helper on")
-                                        root.runCmd("$HOME/.local/bin/notch-bt-helper scan")
+                                        root.runCmd("rfkill unblock bluetooth 2>/dev/null || /usr/sbin/rfkill unblock bluetooth 2>/dev/null || true; bluetoothctl power on 2>/dev/null || true; command -v notch-bt-helper >/dev/null 2>&1 && notch-bt-helper on || [ -x \"$HOME/.local/bin/notch-bt-helper\" ] && \"$HOME/.local/bin/notch-bt-helper\" on || true; command -v notch-bt-helper >/dev/null 2>&1 && notch-bt-helper scan || true")
                                         btDebounceSyncTimer.restart()
                                     }
                                 }
