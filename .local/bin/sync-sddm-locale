@@ -15,6 +15,24 @@ if [ -z "$CODE" ]; then
 fi
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rhythm"
+LOCALES_JSON="$CONFIG_DIR/i18n/locales.json"
+[ -f "$LOCALES_JSON" ] || LOCALES_JSON="$HOME/hyprland/.config/rhythm/i18n/locales.json"
+
+if [ -f "$LOCALES_JSON" ]; then
+    canon=$(jq -r --arg c "$CODE" '
+        to_entries[]
+        | select(
+            .key == $c or
+            (.key | ascii_downcase) == ($c | ascii_downcase) or
+            (.key | ascii_downcase) == ($c | gsub("_"; "-") | ascii_downcase) or
+            .value.locale == $c or
+            .value.locale == ($c + ".UTF-8")
+        )
+        | .key
+    ' "$LOCALES_JSON" 2>/dev/null | head -n 1)
+    [ -n "$canon" ] && CODE="$canon"
+fi
+
 CATALOG="$CONFIG_DIR/i18n/$CODE/island.json"
 [ -f "$CATALOG" ] || CATALOG="$HOME/hyprland/.config/rhythm/i18n/$CODE/island.json"
 
@@ -34,13 +52,30 @@ t_vkb_off=$(jq -r '.sddm_vkb_off // "Virtual Keyboard (off)"' "$CATALOG" 2>/dev/
 
 # Determinar Locale para fecha y hora de SDDM (ej. es_ES.UTF-8, ja_JP.UTF-8)
 sddm_locale=""
-if [ -f "$CONFIG_DIR/locales.json" ]; then
-    sddm_locale=$(jq -r --arg c "$CODE" '.[$c].locale // empty' "$CONFIG_DIR/locales.json" 2>/dev/null)
-fi
-if [ -z "$sddm_locale" ] && [ -f "$HOME/hyprland/.config/rhythm/i18n/locales.json" ]; then
-    sddm_locale=$(jq -r --arg c "$CODE" '.[$c].locale // empty' "$HOME/hyprland/.config/rhythm/i18n/locales.json" 2>/dev/null)
+if [ -f "$LOCALES_JSON" ]; then
+    sddm_locale=$(jq -r --arg c "$CODE" '.[$c].locale // empty' "$LOCALES_JSON" 2>/dev/null)
 fi
 [ -z "$sddm_locale" ] && sddm_locale="es_ES.UTF-8"
+
+# Determinar orientación RTL (árabe, hebreo, persa, urdu)
+rtl_val="false"
+if [ -f "$LOCALES_JSON" ]; then
+    is_rtl=$(jq -r --arg c "$CODE" '.[$c].direction // "ltr"' "$LOCALES_JSON" 2>/dev/null)
+    [ "$is_rtl" = "rtl" ] && rtl_val="true"
+fi
+
+# Determinar formato de fecha adaptado a la cultura
+case "$CODE" in
+    ja|ko|zh-CN|zh-TW)
+        sddm_date_format="yyyy-MM-dd dddd"
+        ;;
+    de|da|no|sv|fi|is)
+        sddm_date_format="dddd d. MMMM"
+        ;;
+    *)
+        sddm_date_format="dddd d MMMM"
+        ;;
+esac
 
 # 1. Actualizar siempre los ficheros en el repositorio local (usuario)
 for target_conf in "$REPO_THEME_DIR/theme.conf" "$REPO_THEME_DIR/Themes/theme1.conf"; do
@@ -58,6 +93,8 @@ for target_conf in "$REPO_THEME_DIR/theme.conf" "$REPO_THEME_DIR/Themes/theme1.c
         sed -i "s|^TranslateVirtualKeyboardButtonOn=.*|TranslateVirtualKeyboardButtonOn=\"$t_vkb_on\"|" "$target_conf"
         sed -i "s|^TranslateVirtualKeyboardButtonOff=.*|TranslateVirtualKeyboardButtonOff=\"$t_vkb_off\"|" "$target_conf"
         sed -i "s|^Locale=.*|Locale=\"$sddm_locale\"|" "$target_conf"
+        sed -i "s|^RightToLeftLayout=.*|RightToLeftLayout=\"$rtl_val\"|" "$target_conf"
+        sed -i "s|^DateFormat=.*|DateFormat=\"$sddm_date_format\"|" "$target_conf"
     fi
 done
 
@@ -79,6 +116,8 @@ if [ -d "$SDDM_THEME_DIR" ]; then
             sed -i "s|^TranslateVirtualKeyboardButtonOn=.*|TranslateVirtualKeyboardButtonOn=\"$t_vkb_on\"|" "$sys_conf"
             sed -i "s|^TranslateVirtualKeyboardButtonOff=.*|TranslateVirtualKeyboardButtonOff=\"$t_vkb_off\"|" "$sys_conf"
             sed -i "s|^Locale=.*|Locale=\"$sddm_locale\"|" "$sys_conf"
+            sed -i "s|^RightToLeftLayout=.*|RightToLeftLayout=\"$rtl_val\"|" "$sys_conf"
+            sed -i "s|^DateFormat=.*|DateFormat=\"$sddm_date_format\"|" "$sys_conf"
         done
     elif command -v sudo >/dev/null 2>&1; then
         sudo -n bash -c "
@@ -97,6 +136,8 @@ if [ -d "$SDDM_THEME_DIR" ]; then
                 sed -i 's|^TranslateVirtualKeyboardButtonOn=.*|TranslateVirtualKeyboardButtonOn=\"$t_vkb_on\"|' \"\$sys_conf\"
                 sed -i 's|^TranslateVirtualKeyboardButtonOff=.*|TranslateVirtualKeyboardButtonOff=\"$t_vkb_off\"|' \"\$sys_conf\"
                 sed -i 's|^Locale=.*|Locale=\"$sddm_locale\"|' \"\$sys_conf\"
+                sed -i 's|^RightToLeftLayout=.*|RightToLeftLayout=\"$rtl_val\"|' \"\$sys_conf\"
+                sed -i 's|^DateFormat=.*|DateFormat=\"$sddm_date_format\"|' \"\$sys_conf\"
             done
         " 2>/dev/null || true
     fi

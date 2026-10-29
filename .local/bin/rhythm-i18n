@@ -20,9 +20,29 @@ fi
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rhythm"
 CATALOG="$CONFIG_DIR/i18n/$CODE/island.json"
+[ -f "$CATALOG" ] || CATALOG="$HOME/hyprland/.config/rhythm/i18n/$CODE/island.json"
 
 if [ ! -f "$CATALOG" ]; then
-    CATALOG="$HOME/hyprland/.config/rhythm/i18n/$CODE/island.json"
+    LOCALES_JSON="$CONFIG_DIR/i18n/locales.json"
+    [ -f "$LOCALES_JSON" ] || LOCALES_JSON="$HOME/hyprland/.config/rhythm/i18n/locales.json"
+    if [ -f "$LOCALES_JSON" ]; then
+        canon=$(jq -r --arg c "$CODE" '
+            to_entries[]
+            | select(
+                .key == $c or
+                (.key | ascii_downcase) == ($c | ascii_downcase) or
+                (.key | ascii_downcase) == ($c | gsub("_"; "-") | ascii_downcase) or
+                .value.locale == $c or
+                .value.locale == ($c + ".UTF-8")
+            )
+            | .key
+        ' "$LOCALES_JSON" 2>/dev/null | head -n 1)
+        if [ -n "$canon" ]; then
+            CODE="$canon"
+            CATALOG="$CONFIG_DIR/i18n/$CODE/island.json"
+            [ -f "$CATALOG" ] || CATALOG="$HOME/hyprland/.config/rhythm/i18n/$CODE/island.json"
+        fi
+    fi
 fi
 
 if [ -f "$CATALOG" ]; then

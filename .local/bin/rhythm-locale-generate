@@ -32,4 +32,4 @@ if grep -qE "^#$base(\.UTF-8)? UTF-8" "$locale_gen" 2>/dev/null; then
 elif ! grep -qE "^$base(\.UTF-8)? UTF-8" "$locale_gen" 2>/dev/null; then
   echo "$locale UTF-8" >>"$locale_gen"
 fi
-locale-gen "$locale" >/dev/null
+locale-gen >/dev/null

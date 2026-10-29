@@ -15,4 +15,14 @@ PS1='[\u@\h \W]\$ '
 # Pywal colors in terminal
 [ -f "$HOME/.cache/wal/sequences" ] && cat "$HOME/.cache/wal/sequences"
 
+# Rhythm locale environment
+if [ -f "$HOME/.config/environment.d/10-locale.conf" ]; then
+    while IFS='=' read -r key val; do
+        [[ -z "$key" || "$key" =~ ^# ]] && continue
+        val="${val%\"}"
+        val="${val#\"}"
+        export "$key=$val"
+    done < "$HOME/.config/environment.d/10-locale.conf"
+fi
+
 

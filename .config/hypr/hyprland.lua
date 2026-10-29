@@ -268,6 +268,7 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("hypridle &")
     hl.exec_cmd("~/.local/bin/rust-dock-launcher &")
     hl.exec_cmd("~/.local/bin/quickshell-island &")
+    hl.exec_cmd("sleep 0.5 && ~/.local/bin/rhythm-language restore &")
     hl.exec_cmd("sleep 0.8 && ~/.local/bin/modern-pywal-sync --startup")
     hl.exec_cmd("sleep 1.0 && ~/.local/bin/notch-language-helper restore &")
     -- Pinned compositor plugins on NixOS. The flake exports one env var per

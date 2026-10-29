@@ -189,7 +189,7 @@ PanelWindow {
     }
 
     Timer {
-        interval: 300
+        interval: 250
         running: true
         repeat: true
         triggeredOnStart: true
@@ -200,59 +200,29 @@ PanelWindow {
     Process {
         id: sysProc
         command: ["bash", "-c", "
-            # 1. Multi-core CPU calculation matching Waybar {icon0}{icon1}{icon2}{icon3} {usage}%
-            cpu_info=$(python3 -c '
-import time
-
-def read_cpu():
-    cores = []
-    tot_idle = 0
-    tot_all = 0
-    with open(\"/proc/stat\") as f:
-        for line in f:
-            if line.startswith(\"cpu\"):
-                p = line.split()
-                if p[0] == \"cpu\":
-                    tot_idle = int(p[4]) + int(p[5])
-                    tot_all = sum(int(x) for x in p[1:])
-                elif p[0][3:].isdigit():
-                    idle = int(p[4]) + int(p[5])
-                    tot = sum(int(x) for x in p[1:])
-                    cores.append((idle, tot))
-    return cores, tot_idle, tot_all
-
-c1, ti1, ta1 = read_cpu()
-time.sleep(0.12)
-c2, ti2, ta2 = read_cpu()
-
-dtot_all = ta2 - ta1
-didle_all = ti2 - ti1
-overall_pct = max(0, min(100, int(((dtot_all - didle_all) / max(dtot_all, 1)) * 100)))
-
-icons = [\"▁\", \"▂\", \"▃\", \"▄\", \"▅\", \"▆\", \"▇\", \"█\"]
-bars = \"\"
-N = len(c1)
-if N >= 4:
-    for k in range(4):
-        s = k * N // 4
-        e = (k + 1) * N // 4
-        u = sum((c2[i][1] - c2[i][0]) - (c1[i][1] - c1[i][0]) for i in range(s, e))
-        t = sum(c2[i][1] - c1[i][1] for i in range(s, e))
-        pct = max(0.0, min(1.0, u / max(t, 1)))
-        bars += icons[min(int(pct * 8), 7)]
-elif N > 0:
-    for k in range(4):
-        i = min(k * N // 4, N - 1)
-        u = (c2[i][1] - c2[i][0]) - (c1[i][1] - c1[i][0])
-        t = c2[i][1] - c1[i][1]
-        pct = max(0.0, min(1.0, u / max(t, 1)))
-        bars += icons[min(int(pct * 8), 7)]
-else:
-    idx = min(int((overall_pct / 100.0) * 8), 7)
-    bars = icons[idx] * 4
-
-print(f\"{bars}|{overall_pct}\")
-' 2>/dev/null || echo \"▁▁▁▁|10\")
+            # 1. Ultra-fast CPU calculation (0ms sleep, uses /proc/stat delta)
+            _prev=\"/run/user/$(id -u)/.qs_cpu_prev\"
+            read -r _ u n s id io ir sir st _ < /proc/stat
+            curr_idle=$((id + io))
+            curr_total=$((u + n + s + id + io + ir + sir + st))
+            overall_pct=5
+            if [ -f \"$_prev\" ]; then
+                read -r prev_idle prev_total < \"$_prev\"
+                diff_idle=$((curr_idle - prev_idle))
+                diff_total=$((curr_total - prev_total))
+                if [ \"$diff_total\" -gt 0 ]; then
+                    overall_pct=$(( (100 * (diff_total - diff_idle)) / diff_total ))
+                    [ \"$overall_pct\" -lt 0 ] && overall_pct=0
+                    [ \"$overall_pct\" -gt 100 ] && overall_pct=100
+                fi
+            fi
+            echo \"$curr_idle $curr_total\" > \"$_prev\"
+            icons=(\"▁\" \"▂\" \"▃\" \"▄\" \"▅\" \"▆\" \"▇\" \"█\")
+            idx=$(( overall_pct * 7 / 100 ))
+            [ \"$idx\" -gt 7 ] && idx=7
+            [ \"$idx\" -lt 0 ] && idx=0
+            ic=\"${icons[$idx]}\"
+            cpu_info=\"${ic}${ic}${ic}${ic}|$overall_pct\"
 
             # 2. RAM
             ram_used=$(free -m | awk '/Mem:/ {printf \"%.1fG/%.1fG\", $3/1024, $2/1024}')
@@ -488,7 +458,7 @@ print(f\"{bars}|{overall_pct}\")
     }
 
     Timer {
-        interval: 1500
+        interval: 650
         running: true
         repeat: true
         triggeredOnStart: true
@@ -571,8 +541,9 @@ print(f\"{bars}|{overall_pct}\")
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    barWin.run("hyprctl dispatch workspace " + modelData.id)
                                     barWin.activeWsId = modelData.id
+                                    barWin.run("hyprctl dispatch workspace " + modelData.id)
+                                    if (!wsProc.running) wsProc.running = true
                                 }
                             }
                         }
@@ -581,8 +552,14 @@ print(f\"{bars}|{overall_pct}\")
 
                 WheelHandler {
                     onWheel: event => {
-                        if (event.angleDelta.y > 0) barWin.run("hyprctl dispatch workspace m-1")
-                        else if (event.angleDelta.y < 0) barWin.run("hyprctl dispatch workspace m+1")
+                        if (event.angleDelta.y > 0) {
+                            barWin.activeWsId = Math.max(1, barWin.activeWsId - 1)
+                            barWin.run("hyprctl dispatch workspace m-1")
+                        } else if (event.angleDelta.y < 0) {
+                            barWin.activeWsId = barWin.activeWsId + 1
+                            barWin.run("hyprctl dispatch workspace m+1")
+                        }
+                        if (!wsProc.running) wsProc.running = true
                     }
                 }
             }
@@ -839,6 +816,7 @@ print(f\"{bars}|{overall_pct}\")
                         let scrName = (barWin.screen && barWin.screen.name) ? barWin.screen.name : ""
                         if (mouse.button === Qt.RightButton) {
                             barWin.run("$HOME/.local/bin/notch-language-helper switch 2>/dev/null || $HOME/.local/bin/toggle-keyboard-layout 2>/dev/null || hyprctl switchxkblayout all next")
+                            if (!wsProc.running) wsProc.running = true
                         } else {
                             if (barWin.islandRoot && typeof barWin.islandRoot.toggleLanguage === "function") {
                                 barWin.islandRoot.toggleLanguage(scrName)
@@ -1054,8 +1032,9 @@ print(f\"{bars}|{overall_pct}\")
                                 if (mouse.button === Qt.RightButton) {
                                     barWin.run("pavucontrol")
                                 } else {
-                                    barWin.run("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")
                                     barWin.volMuted = !barWin.volMuted
+                                    barWin.run("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")
+                                    if (!sysProc.running) sysProc.running = true
                                 }
                             }
                             onDoubleClicked: barWin.run("pavucontrol")
@@ -1063,8 +1042,15 @@ print(f\"{bars}|{overall_pct}\")
 
                         WheelHandler {
                             onWheel: event => {
-                                if (event.angleDelta.y > 0) barWin.run("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 2%+")
-                                else if (event.angleDelta.y < 0) barWin.run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-")
+                                if (event.angleDelta.y > 0) {
+                                    barWin.volPercent = Math.min(150, barWin.volPercent + 2)
+                                    barWin.volMuted = false
+                                    barWin.run("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 2%+")
+                                } else if (event.angleDelta.y < 0) {
+                                    barWin.volPercent = Math.max(0, barWin.volPercent - 2)
+                                    barWin.run("wpctl set-volume @DEFAULT_AUDIO_SINK@ 2%-")
+                                }
+                                if (!sysProc.running) sysProc.running = true
                             }
                         }
                     }
@@ -1107,8 +1093,14 @@ print(f\"{bars}|{overall_pct}\")
 
                         WheelHandler {
                             onWheel: event => {
-                                if (event.angleDelta.y > 0) barWin.run("brightnessctl set 2%+")
-                                else if (event.angleDelta.y < 0) barWin.run("brightnessctl set 2%-")
+                                if (event.angleDelta.y > 0) {
+                                    barWin.brightnessPercent = Math.min(100, barWin.brightnessPercent + 2)
+                                    barWin.run("brightnessctl set 2%+")
+                                } else if (event.angleDelta.y < 0) {
+                                    barWin.brightnessPercent = Math.max(1, barWin.brightnessPercent - 2)
+                                    barWin.run("brightnessctl set 2%-")
+                                }
+                                if (!sysProc.running) sysProc.running = true
                             }
                         }
                     }

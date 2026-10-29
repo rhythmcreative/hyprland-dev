@@ -70,9 +70,18 @@ restore_bars() {
 }
 trap restore_bars EXIT
 
+L_WIFI=$(rhythm-i18n mod_wifi "Wi-Fi")
+L_CONNECTED=$(rhythm-i18n mod_wifi_connected "Connected")
+L_DISCONNECTED=$(rhythm-i18n mod_wifi_disconnected "Disconnected")
+L_CONNECT=$(rhythm-i18n wifi_connect "Connect")
+L_DISCONNECT=$(rhythm-i18n wifi_disconnect "Disconnect")
+L_BACK=$(rhythm-i18n wifi_back "Back")
+L_TITLE=$(rhythm-i18n wifi_title "Wi-Fi Networks")
+L_PASS=$(rhythm-i18n wifi_pass_placeholder "Password")
+
 notify() {
     if command -v notify-send >/dev/null 2>&1; then
-        notify-send -t 3000 -i network-wireless "Wi-Fi" "$1"
+        notify-send -t 3000 -i network-wireless "$L_WIFI" "$1"
     fi
 }
 
@@ -80,22 +89,22 @@ notify() {
 WIFI_STATE=$(nmcli -fields WIFI g 2>/dev/null | tail -n 1 | tr -d ' ')
 
 if [[ "$WIFI_STATE" =~ enabled ]] || [ "$WIFI_STATE" = "enabled" ]; then
-    TOGGLE_TEXT="󰖪  Desactivar Wi-Fi"
+    TOGGLE_TEXT="󰖪  $L_DISCONNECT Wi-Fi [action:off]"
 else
-    TOGGLE_TEXT="󰖩  Activar Wi-Fi"
+    TOGGLE_TEXT="󰖩  $L_CONNECT Wi-Fi [action:on]"
 fi
 
 # Si el Wi-Fi esta desactivado, mostrar opcion para activarlo
 if [ "$WIFI_STATE" != "enabled" ]; then
-    CHOSEN=$(echo -e "$TOGGLE_TEXT\n󰒓  Abrir Administrador (nm-connection-editor)" | rofi-themed -dmenu -i -p "Wi-Fi" -theme "$THEME_FILE" -m "$ACTIVE_MON")
+    CHOSEN=$(echo -e "$TOGGLE_TEXT\n󰒓  nm-connection-editor [action:manager]" | rofi-themed -dmenu -i -p "$L_WIFI" -theme "$THEME_FILE" -m "$ACTIVE_MON")
     case "$CHOSEN" in
-        *"Activar Wi-Fi"*)
+        *"[action:on]"*|*"Activar Wi-Fi"*|*"Enable"*)
             nmcli radio wifi on
-            notify "Wi-Fi activado. Buscando redes..."
+            notify "$L_WIFI: On"
             sleep 2
             exec "$0"
             ;;
-        *"Abrir Administrador"*)
+        *"[action:manager]"*|*"Administrador"*|*"nm-connection-editor"*)
             nm-connection-editor &
             ;;
     esac
@@ -110,12 +119,12 @@ NET_ITEMS=""
 
 while IFS=: read -r in_use ssid security bars signal; do
     [ -z "$ssid" ] && continue
-    sec_label="Abierta"
+    sec_label="Open"
     [ -n "$security" ] && [ "$security" != "--" ] && sec_label="$security"
 
     if [ "$in_use" = "*" ]; then
         ACTIVE_CONN="$ssid"
-        NET_ITEMS="${NET_ITEMS}󰤨  $ssid (Conectado) │ Señal: ${signal}% ($bars) │ $sec_label\n"
+        NET_ITEMS="${NET_ITEMS}󰤨  $ssid ($L_CONNECTED) │ $signal% ($bars) │ $sec_label\n"
     else
         # Icono segun senal
         if [ "$signal" -ge 75 ]; then
@@ -127,46 +136,45 @@ while IFS=: read -r in_use ssid security bars signal; do
         else
             icon="󰤟"
         fi
-        [ "$sec_label" != "Abierta" ] && icon="${icon}"
-        NET_ITEMS="${NET_ITEMS}${icon}  $ssid │ Señal: ${signal}% ($bars) │ $sec_label\n"
+        [ "$sec_label" != "Open" ] && icon="${icon}"
+        NET_ITEMS="${NET_ITEMS}${icon}  $ssid │ $signal% ($bars) │ $sec_label\n"
     fi
 done <<< "$RAW_NETWORKS"
 
 # Cabecera de acciones
-HEADER="$TOGGLE_TEXT\n󰑐  Escanear redes de nuevo\n󰒓  Abrir Administrador de Conexiones\n󱛂  Conectar a red oculta (Manual)\n────────────────────────────────────────"
+HEADER="$TOGGLE_TEXT\n󰑐  Rescan [action:rescan]\n󰒓  nm-connection-editor [action:manager]\n󱛂  $L_CONNECT (Hidden SSID) [action:hidden]\n────────────────────────────────────────"
 
 MENU_CONTENT=$(echo -e "${HEADER}\n${NET_ITEMS}")
 
-CHOSEN=$(echo -e "$MENU_CONTENT" | rofi-themed -dmenu -i -p "Redes Wi-Fi" -theme "$THEME_FILE" -m "$ACTIVE_MON")
+CHOSEN=$(echo -e "$MENU_CONTENT" | rofi-themed -dmenu -i -p "$L_TITLE" -theme "$THEME_FILE" -m "$ACTIVE_MON")
 
 [ -z "$CHOSEN" ] && exit 0
 [[ "$CHOSEN" =~ ^─ ]] && exit 0
 
 case "$CHOSEN" in
-    *"Desactivar Wi-Fi"*)
+    *"[action:off]"*|*"Desactivar Wi-Fi"*|*"Disable"*)
         nmcli radio wifi off
-        notify "Wi-Fi desactivado"
+        notify "$L_WIFI: Off"
         exit 0
         ;;
-    *"Activar Wi-Fi"*)
+    *"[action:on]"*|*"Activar Wi-Fi"*|*"Enable"*)
         nmcli radio wifi on
-        notify "Wi-Fi activado"
+        notify "$L_WIFI: On"
         exit 0
         ;;
-    *"Escanear redes"*)
-        notify "Escaneando redes disponibles..."
+    *"[action:rescan]"*|*"Escanear redes"*|*"Rescan"*)
         nmcli device wifi rescan 2>/dev/null || true
         sleep 1.5
         exec "$0"
         ;;
-    *"Abrir Administrador"*)
+    *"[action:manager]"*|*"Abrir Administrador"*|*"nm-connection-editor"*)
         nm-connection-editor &
         exit 0
         ;;
-    *"Conectar a red oculta"*)
-        HIDDEN_SSID=$(rofi-themed -dmenu -p "Nombre de red (SSID)" -theme "$THEME_FILE" -m "$ACTIVE_MON")
+    *"[action:hidden]"*|*"red oculta"*|*"Hidden"*)
+        HIDDEN_SSID=$(rofi-themed -dmenu -p "SSID" -theme "$THEME_FILE" -m "$ACTIVE_MON")
         [ -z "$HIDDEN_SSID" ] && exit 0
-        HIDDEN_PASS=$(rofi-themed -dmenu -password -p "Contraseña para $HIDDEN_SSID" -theme "$THEME_FILE" -m "$ACTIVE_MON")
+        HIDDEN_PASS=$(rofi-themed -dmenu -password -p "$L_PASS ($HIDDEN_SSID)" -theme "$THEME_FILE" -m "$ACTIVE_MON")
         if [ -n "$HIDDEN_PASS" ]; then
             nmcli dev wifi connect "$HIDDEN_SSID" password "$HIDDEN_PASS" hidden yes
         else
@@ -177,62 +185,54 @@ case "$CHOSEN" in
 esac
 
 # Extraer el SSID seleccionado
-SELECTED_SSID=$(echo "$CHOSEN" | awk -F'│' '{print $1}' | sed -E 's/^[󰤨󰤥󰤢󰤟󰖩󰖪* ]+//' | sed 's/ (Conectado)//' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+SELECTED_SSID=$(echo "$CHOSEN" | awk -F'│' '{print $1}' | sed -E 's/^[󰤨󰤥󰤢󰤟󰖩󰖪* ]+//' | sed -E 's/ \([^)]+\)$//' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 
 [ -z "$SELECTED_SSID" ] && exit 0
 
 # Si es la red activa, ofrecer desconectar u olvidar
 if [ "$SELECTED_SSID" = "$ACTIVE_CONN" ]; then
-    ACTION=$(echo -e "󰅖  Desconectar de $SELECTED_SSID\n󰆴  Olvidar esta red\n󰅁  Volver" | rofi-themed -dmenu -i -p "$SELECTED_SSID" -theme "$THEME_FILE" -m "$ACTIVE_MON")
+    ACTION=$(echo -e "󰅖  $L_DISCONNECT: $SELECTED_SSID [action:disconnect]\n󰆴  Forget [action:forget]\n󰅁  $L_BACK [action:back]" | rofi-themed -dmenu -i -p "$SELECTED_SSID" -theme "$THEME_FILE" -m "$ACTIVE_MON")
     case "$ACTION" in
-        *"Desconectar"*)
+        *"[action:disconnect]"*|*"Desconectar"*|*"Disconnect"*)
             nmcli connection down id "$SELECTED_SSID" 2>/dev/null || nmcli device disconnect wlan0 2>/dev/null
-            notify "Desconectado de $SELECTED_SSID"
+            notify "$L_DISCONNECT: $SELECTED_SSID"
             ;;
-        *"Olvidar"*)
+        *"[action:forget]"*|*"Olvidar"*|*"Forget"*)
             nmcli connection delete id "$SELECTED_SSID" 2>/dev/null
-            notify "Red $SELECTED_SSID eliminada"
+            notify "Forget: $SELECTED_SSID"
             ;;
     esac
     exit 0
 fi
 
 # Verificar si la conexion ya existe en el sistema
-SAVED_CONN=$(nmcli -t -f NAME connection show | grep -Fx "$SELECTED_SSID" | head -n 1)
-
-if [ -n "$SAVED_CONN" ]; then
-    notify "Conectando a red guardada: $SELECTED_SSID..."
-    if nmcli connection up id "$SELECTED_SSID" 2>/dev/null; then
-        notify "Conectado exitosamente a $SELECTED_SSID"
+if nmcli -t -f NAME connection show | grep -Fxq "$SELECTED_SSID"; then
+    notify "$L_CONNECT: $SELECTED_SSID..."
+    if nmcli connection up id "$SELECTED_SSID"; then
+        notify "$L_CONNECTED: $SELECTED_SSID"
     else
-        notify "Fallo al conectar a $SELECTED_SSID. Intentando reconectar..."
-        nmcli dev wifi connect "$SELECTED_SSID"
+        notify "Error connecting: $SELECTED_SSID"
+    fi
+    exit 0
+fi
+
+# Red sin guardar: verificar si es abierta o protegida
+SEC_TYPE=$(nmcli -t -f SSID,SECURITY device wifi list 2>/dev/null | awk -F: -v target="$SELECTED_SSID" '$1 == target { print $2; exit }')
+
+if [ -z "$SEC_TYPE" ] || [ "$SEC_TYPE" = "--" ]; then
+    notify "$L_CONNECT: $SELECTED_SSID..."
+    if nmcli device wifi connect "$SELECTED_SSID"; then
+        notify "$L_CONNECTED: $SELECTED_SSID"
+    else
+        notify "Error: $SELECTED_SSID"
     fi
 else
-    # Red nueva: verificar si requiere contraseña
-    SEC_TYPE=$(echo "$CHOSEN" | awk -F'│' '{print $3}' | tr -d ' ')
-    if [ "$SEC_TYPE" = "Abierta" ] || [ -z "$SEC_TYPE" ] || [ "$SEC_TYPE" = "--" ]; then
-        notify "Conectando a red abierta: $SELECTED_SSID..."
-        nmcli dev wifi connect "$SELECTED_SSID"
-    elif [[ "$SEC_TYPE" =~ (802\.1X|Enterprise|EAP) ]]; then
-        WIFI_USER=$(rofi-themed -dmenu -p "Usuario / Identity ($SELECTED_SSID)" -theme "$THEME_FILE" -m "$ACTIVE_MON")
-        [ -z "$WIFI_USER" ] && exit 0
-        WIFI_PASSWORD=$(rofi-themed -dmenu -password -p "Contraseña ($SELECTED_SSID)" -theme "$THEME_FILE" -m "$ACTIVE_MON")
-        [ -z "$WIFI_PASSWORD" ] && exit 0
-        notify "Conectando a red WPA Enterprise: $SELECTED_SSID..."
-        if "$HOME/.local/bin/notch-wifi-helper" connect-enterprise "$SELECTED_SSID" "$WIFI_USER" "$WIFI_PASSWORD"; then
-            notify "Conectado exitosamente a $SELECTED_SSID"
-        else
-            notify "Error de autenticación al conectar a $SELECTED_SSID"
-        fi
+    PASS=$(rofi-themed -dmenu -password -p "$L_PASS ($SELECTED_SSID)" -theme "$THEME_FILE" -m "$ACTIVE_MON")
+    [ -z "$PASS" ] && exit 0
+    notify "$L_CONNECT: $SELECTED_SSID..."
+    if nmcli device wifi connect "$SELECTED_SSID" password "$PASS"; then
+        notify "$L_CONNECTED: $SELECTED_SSID"
     else
-        WIFI_PASSWORD=$(rofi-themed -dmenu -password -p "Contraseña ($SELECTED_SSID)" -theme "$THEME_FILE" -m "$ACTIVE_MON")
-        [ -z "$WIFI_PASSWORD" ] && exit 0
-        notify "Conectando a $SELECTED_SSID..."
-        if nmcli dev wifi connect "$SELECTED_SSID" password "$WIFI_PASSWORD"; then
-            notify "Conectado exitosamente a $SELECTED_SSID"
-        else
-            notify "Error de autenticacion al conectar a $SELECTED_SSID"
-        fi
+        notify "Error: $SELECTED_SSID"
     fi
 fi

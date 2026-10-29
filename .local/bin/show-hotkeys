@@ -105,8 +105,9 @@ Privacy Shield Daemon   │ Camera/Mic Background Alerts     │ Privacy
 EOF
 )
 
-# Display Rofi menu with English prompt
-selected=$(printf "%s\n" "$HOTKEYS_DATA" | rofi-themed -dmenu -i -p "Hotkeys" -theme "$THEME_FILE")
+# Display Rofi menu with localized prompt
+p_hotkeys=$(rhythm-i18n "lang_tab_hotkey" "Hotkeys" 2>/dev/null || echo "Hotkeys")
+selected=$(printf "%s\n" "$HOTKEYS_DATA" | rofi-themed -dmenu -i -p "$p_hotkeys" -theme "$THEME_FILE")
 
 # Restore bars simultaneously in parallel
 [ "$_WAYBAR_WAS_VISIBLE" = true ] && (pkill -SIGUSR2 -x waybar 2>/dev/null || pkill -SIGUSR2 -x .waybar-wrapped 2>/dev/null) &

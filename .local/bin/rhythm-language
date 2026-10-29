@@ -4,21 +4,92 @@
 
 set -euo pipefail
 
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -e "$XDG_RUNTIME_DIR/bus" ]; then
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+fi
+if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+    HYPR_SIG=$(ls -t "$XDG_RUNTIME_DIR/hypr/" 2>/dev/null | head -n1)
+    [ -n "$HYPR_SIG" ] && export HYPRLAND_INSTANCE_SIGNATURE="$HYPR_SIG"
+fi
+
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/rhythm"
 LANG_FILE="$CONFIG_DIR/language"
 LOCALES_JSON="${RHYTHM_LOCALES_JSON:-$CONFIG_DIR/i18n/locales.json}"
+[ -f "$LOCALES_JSON" ] || LOCALES_JSON="$HOME/hyprland/.config/rhythm/i18n/locales.json"
 SESSION_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/uwsm/env.d/50-rhythm-language"
 ENV_LOCALE="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d/10-locale.conf"
 
 generator="rhythm-locale-generate"
 
+canonical_code() {
+    local input="${1:-}"
+    [ -z "$input" ] && echo "es" && return 0
+
+    if [ -f "$LOCALES_JSON" ]; then
+        if jq -e --arg c "$input" 'has($c)' "$LOCALES_JSON" >/dev/null 2>&1; then
+            echo "$input"
+            return 0
+        fi
+
+        local match
+        match=$(jq -r --arg c "$input" '
+            to_entries[]
+            | select(
+                (.key | ascii_downcase) == ($c | ascii_downcase) or
+                (.key | ascii_downcase) == ($c | gsub("_"; "-") | ascii_downcase)
+            )
+            | .key
+        ' "$LOCALES_JSON" 2>/dev/null | head -n 1)
+        if [ -n "$match" ]; then
+            echo "$match"
+            return 0
+        fi
+
+        local clean_loc="${input%.utf8}"
+        clean_loc="${clean_loc%.UTF-8}"
+        match=$(jq -r --arg l "$input" --arg cl "$clean_loc" '
+            to_entries[]
+            | select(
+                .value.locale == $l or
+                .value.locale == ($cl + ".UTF-8") or
+                (.value.locale | ascii_downcase) == ($l | ascii_downcase) or
+                (.value.locale | ascii_downcase) == (($cl + ".utf-8") | ascii_downcase)
+            )
+            | .key
+        ' "$LOCALES_JSON" 2>/dev/null | head -n 1)
+        if [ -n "$match" ]; then
+            echo "$match"
+            return 0
+        fi
+
+        local prefix="${input%%[-_.]*}"
+        prefix=$(echo "$prefix" | tr '[:upper:]' '[:lower:]')
+        if [ "$prefix" = "zh" ] || [ "$prefix" = "cmn" ]; then
+            echo "zh-CN"
+            return 0
+        elif [ "$prefix" = "latam" ]; then
+            echo "es-MX"
+            return 0
+        elif jq -e --arg c "$prefix" 'has($c)' "$LOCALES_JSON" >/dev/null 2>&1; then
+            echo "$prefix"
+            return 0
+        fi
+    fi
+
+    if [ -d "$CONFIG_DIR/i18n/$input" ] || [ -d "$HOME/hyprland/.config/rhythm/i18n/$input" ]; then
+        echo "$input"
+        return 0
+    fi
+
+    return 1
+}
+
 known_language() {
     local code="$1"
-    [ -f "$LOCALES_JSON" ] && jq -e --arg code "$code" 'has($code)' "$LOCALES_JSON" >/dev/null 2>&1 && return 0
-    if [[ "$code" == *"."* ]] || [[ "$code" == *"_"* ]]; then
-        grep -q "^#\?${code%%.*}" /etc/locale.gen 2>/dev/null && return 0
-        locale -a 2>/dev/null | grep -qi "^${code%%.*}" && return 0
-    fi
+    local canon
+    canon=$(canonical_code "$code" 2>/dev/null) || return 1
+    [ -n "$canon" ] && return 0
     return 1
 }
 
@@ -27,15 +98,13 @@ current_language() {
     if [[ -f "$LANG_FILE" ]]; then
         code=$(head -n 1 "$LANG_FILE" | tr -d '[:space:]')
     fi
-    if [[ -n "$code" ]] && known_language "$code"; then
-        echo "$code"
-    else
-        echo "es"
-    fi
+    code=$(canonical_code "$code" 2>/dev/null || echo "es")
+    echo "${code:-es}"
 }
 
 locale_for() {
     local code="$1"
+    code=$(canonical_code "$code" 2>/dev/null || echo "$code")
     if [ -f "$LOCALES_JSON" ]; then
         local l
         l=$(jq -r --arg code "$code" '.[$code].locale // empty' "$LOCALES_JSON" 2>/dev/null)
@@ -56,6 +125,7 @@ locale_for() {
 
 name_for() {
     local code="$1"
+    code=$(canonical_code "$code" 2>/dev/null || echo "$code")
     if [ -f "$LOCALES_JSON" ]; then
         local n
         n=$(jq -r --arg code "$code" '.[$code].name // empty' "$LOCALES_JSON" 2>/dev/null)
@@ -66,6 +136,7 @@ name_for() {
 
 flag_for() {
     local code="$1"
+    code=$(canonical_code "$code" 2>/dev/null || echo "$code")
     if [ -f "$LOCALES_JSON" ]; then
         local f
         f=$(jq -r --arg code "$code" '.[$code].flag // empty' "$LOCALES_JSON" 2>/dev/null)
@@ -98,40 +169,59 @@ generate_locale() {
     locale_generated "$locale" && return 0
 
     local base=${locale%.UTF-8}
-    sudo localedef -i "$base" -f UTF-8 "$locale" >/dev/null 2>&1 || "$generator" "$code" || true
+    if command -v sudo >/dev/null 2>&1; then
+        sudo -n localedef -i "$base" -f UTF-8 "$locale" >/dev/null 2>&1 && return 0
+        local gen_bin
+        gen_bin=$(command -v rhythm-locale-generate || echo "$HOME/.local/bin/rhythm-locale-generate")
+        [ -x "$gen_bin" ] && sudo -n "$gen_bin" "$code" >/dev/null 2>&1 && return 0
+    fi
+    localedef -i "$base" -f UTF-8 "$locale" >/dev/null 2>&1 || true
 }
 
 apply_session_locale() {
     local locale="$1"
+    local lang_code="${locale%%_*}"
+
     mkdir -p "$(dirname "$SESSION_ENV")"
-    printf '# The session language, set by rhythm-language\nexport LANG=%s\nexport LC_MESSAGES=%s\nexport LANGUAGE=%s\n' "$locale" "$locale" "$locale" > "$SESSION_ENV"
+    printf '# The session language, set by rhythm-language\nexport LANG=%s\nexport LC_MESSAGES=%s\nexport LC_TIME=%s\nexport LC_COLLATE=%s\nexport LANGUAGE=%s:%s\n' "$locale" "$locale" "$locale" "$locale" "$locale" "$lang_code" > "$SESSION_ENV"
 
     mkdir -p "$(dirname "$ENV_LOCALE")"
-    printf 'LANG="%s"\nLC_MESSAGES="%s"\nLANGUAGE="%s"\n' "$locale" "$locale" "$locale" > "$ENV_LOCALE"
+    printf 'LANG="%s"\nLC_MESSAGES="%s"\nLC_TIME="%s"\nLC_COLLATE="%s"\nLANGUAGE="%s:%s"\n' "$locale" "$locale" "$locale" "$locale" "$locale" "$lang_code" > "$ENV_LOCALE"
 
-    # Update systemd-localed if available
-    command -v localectl >/dev/null 2>&1 && localectl set-locale "LANG=$locale" "LC_MESSAGES=$locale" >/dev/null 2>&1 || true
+    # Update systemd-localed and /etc/locale.conf
+    if command -v localectl >/dev/null 2>&1; then
+        localectl set-locale "LANG=$locale" "LC_MESSAGES=$locale" "LC_TIME=$locale" >/dev/null 2>&1 || true
+    fi
+    if command -v sudo >/dev/null 2>&1; then
+        sudo -n bash -c "printf 'LANG=\"%s\"\nLC_MESSAGES=\"%s\"\nLC_TIME=\"%s\"\nLANGUAGE=\"%s\"\n' '$locale' '$locale' '$locale' '$locale' > /etc/locale.conf" >/dev/null 2>&1 || true
+    elif [ -w /etc/locale.conf ]; then
+        printf 'LANG="%s"\nLC_MESSAGES="%s"\nLC_TIME="%s"\nLANGUAGE="%s"\n' "$locale" "$locale" "$locale" "$locale" > /etc/locale.conf 2>/dev/null || true
+    fi
 
-    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || command -v hyprctl >/dev/null 2>&1; then
         hyprctl setenv LANG "$locale" >/dev/null 2>&1 || true
         hyprctl setenv LC_MESSAGES "$locale" >/dev/null 2>&1 || true
-        hyprctl setenv LANGUAGE "$locale" >/dev/null 2>&1 || true
+        hyprctl setenv LC_TIME "$locale" >/dev/null 2>&1 || true
+        hyprctl setenv LC_COLLATE "$locale" >/dev/null 2>&1 || true
+        hyprctl setenv LANGUAGE "$locale:$lang_code" >/dev/null 2>&1 || true
         hyprctl eval "hl.env(\"LANG\", \"$locale\", true)" >/dev/null 2>&1 || true
         hyprctl eval "hl.env(\"LC_MESSAGES\", \"$locale\", true)" >/dev/null 2>&1 || true
-        hyprctl eval "hl.env(\"LANGUAGE\", \"$locale\", true)" >/dev/null 2>&1 || true
+        hyprctl eval "hl.env(\"LC_TIME\", \"$locale\", true)" >/dev/null 2>&1 || true
+        hyprctl eval "hl.env(\"LANGUAGE\", \"$locale:$lang_code\", true)" >/dev/null 2>&1 || true
     fi
 
     if command -v systemctl >/dev/null 2>&1; then
-        systemctl --user import-environment LANG LC_MESSAGES LANGUAGE >/dev/null 2>&1 || true
+        systemctl --user import-environment LANG LC_MESSAGES LC_TIME LC_COLLATE LANGUAGE >/dev/null 2>&1 || true
     fi
     if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-        dbus-update-activation-environment --systemd LANG LC_MESSAGES LANGUAGE >/dev/null 2>&1 || true
+        dbus-update-activation-environment --systemd LANG LC_MESSAGES LC_TIME LC_COLLATE LANGUAGE >/dev/null 2>&1 || true
     fi
 }
 
 update_hyprlock_locale() {
     local code="$1"
     local catalog="$CONFIG_DIR/i18n/$code/island.json"
+    [ -f "$catalog" ] || catalog="$HOME/hyprland/.config/rhythm/i18n/$code/island.json"
     local placeholder="Enter password..."
     local fail="Incorrect password"
     local welcome='Welcome back, $USER'
@@ -155,29 +245,23 @@ EOF
 notify_quickshell() {
     local code="$1"
     local qs_path="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/waybar-island/shell.qml"
+    quickshell ipc -p "$qs_path" --any-display call language set "$code" >/dev/null 2>&1 || true
     quickshell ipc -p "$qs_path" --any-display call island reloadLanguage "" >/dev/null 2>&1 || true
     quickshell ipc -p "$qs_path" --any-display call island refreshLanguages "" >/dev/null 2>&1 || true
-    quickshell ipc -p "$qs_path" --any-display call language set "$code" >/dev/null 2>&1 || true
 }
 
 set_language() {
-    local code="$1"
-    if ! known_language "$code"; then
-        local found
-        found=$(jq -r --arg l "$code" 'to_entries[] | select(.value.locale == $l or .value.locale == ($l + ".UTF-8")) | .key' "$LOCALES_JSON" 2>/dev/null | head -n 1)
-        if [ -n "$found" ]; then
-            code="$found"
-        else
-            local short=${code%%_*}
-            if known_language "$short"; then
-                code="$short"
-            fi
-        fi
+    local raw_input="${1:-}"
+    if [ -z "$raw_input" ]; then
+        echo "Usage: rhythm-language [<code>|set <code>|list|locale [<code>]|toggle]" >&2
+        exit 1
     fi
 
-    if ! known_language "$code"; then
+    local code
+    code=$(canonical_code "$raw_input" 2>/dev/null || true)
+    if [ -z "$code" ]; then
         echo "Usage: rhythm-language [<code>|set <code>|list|locale [<code>]|toggle]" >&2
-        echo "Unknown language code: $code" >&2
+        echo "Unknown language code: $raw_input" >&2
         echo "Run 'rhythm-language list' to see available codes." >&2
         exit 1
     fi
@@ -187,6 +271,9 @@ set_language() {
     name=$(name_for "$code")
     flag=$(flag_for "$code")
 
+    # Generate system locale first so it exists in glibc immediately
+    generate_locale "$code" "$locale"
+
     mkdir -p "$CONFIG_DIR"
     echo "$code" > "$LANG_FILE"
 
@@ -195,6 +282,12 @@ set_language() {
     echo "$code" > "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/language"
 
     apply_session_locale "$locale"
+
+    # Update XDG user directories locale
+    if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+        LC_ALL="$locale" LANG="$locale" xdg-user-dirs-update 2>/dev/null || true
+    fi
+
     notify_quickshell "$code"
     update_hyprlock_locale "$code"
 
@@ -205,59 +298,7 @@ set_language() {
         "$HOME/.local/bin/sync-sddm-locale" "$code" >/dev/null 2>&1 || true
     fi
 
-    # Auto-switch keyboard layout to matching language if configured
-    local kb_map=""
-    case "$code" in
-        es|es-ES|es-MX|latam|ca) kb_map="es" ;;
-        en|en-US|en-GB|id|ms|fil|sw) kb_map="us" ;;
-        de) kb_map="de" ;;
-        fr) kb_map="fr" ;;
-        it) kb_map="it" ;;
-        pt|pt-BR) kb_map="pt" ;;
-        ru) kb_map="ru" ;;
-        ja) kb_map="jp" ;;
-        zh-CN|cmn) kb_map="cn" ;;
-        zh-TW) kb_map="tw" ;;
-        ko) kb_map="kr" ;;
-        tr) kb_map="tr" ;;
-        pl) kb_map="pl" ;;
-        nl) kb_map="nl" ;;
-        sv) kb_map="se" ;;
-        no) kb_map="no" ;;
-        da) kb_map="dk" ;;
-        fi) kb_map="fi" ;;
-        el) kb_map="gr" ;;
-        cs) kb_map="cz" ;;
-        ro) kb_map="ro" ;;
-        hu) kb_map="hu" ;;
-        uk) kb_map="ua" ;;
-        he) kb_map="il" ;;
-        bg) kb_map="bg" ;;
-        sk) kb_map="sk" ;;
-        hr) kb_map="hr" ;;
-        sl) kb_map="si" ;;
-        sr) kb_map="rs" ;;
-        et) kb_map="ee" ;;
-        lv) kb_map="lv" ;;
-        lt) kb_map="lt" ;;
-        th) kb_map="th" ;;
-        vi) kb_map="vn" ;;
-        hi) kb_map="in" ;;
-        bn) kb_map="bd" ;;
-        ur) kb_map="pk" ;;
-        fa) kb_map="ir" ;;
-        is) kb_map="is" ;;
-        ga) kb_map="ie" ;;
-        uz) kb_map="uz" ;;
-        si|ta) kb_map="lk" ;;
-        ar) kb_map="ara" ;;
-        *) kb_map="" ;;
-    esac
-    if [ -n "$kb_map" ] && [ -x "$HOME/.local/bin/notch-language-helper" ]; then
-        "$HOME/.local/bin/notch-language-helper" switch "$kb_map" >/dev/null 2>&1 || true
-    fi
 
-    generate_locale "$code" "$locale"
 
     if command -v notify-send >/dev/null 2>&1; then
         local n_title n_body
@@ -281,6 +322,20 @@ toggle_language() {
     fi
 }
 
+restore_language() {
+    local code
+    code=$(current_language)
+    local locale
+    locale=$(locale_for "$code")
+    apply_session_locale "$locale"
+    update_hyprlock_locale "$code"
+    notify_quickshell "$code"
+    if [ -x "$HOME/.local/bin/sync-sddm-locale" ]; then
+        "$HOME/.local/bin/sync-sddm-locale" "$code" >/dev/null 2>&1 || true
+    fi
+    echo "Restored language session to: $code ($locale)"
+}
+
 case "${1:-}" in
     "")
         current_language
@@ -298,6 +353,9 @@ case "${1:-}" in
         ;;
     set)
         set_language "${2:-}"
+        ;;
+    restore)
+        restore_language
         ;;
     toggle)
         toggle_language

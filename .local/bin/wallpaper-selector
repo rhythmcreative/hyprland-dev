@@ -229,9 +229,10 @@ for img in "${images[@]}"; do
 done
 
 # 4. Mostrar rofi (Carga instantánea)
+p_wall=$(rhythm-i18n "mod_wallpapers" "Wallpapers" 2>/dev/null || echo "Wallpapers")
 selected=$(rofi-themed -dmenu -i \
     ${ISLAND_TARGET:+$([ "$ISLAND_TARGET" != all ] && printf '%s' "-m $ISLAND_TARGET")} \
-    -p "Wallpapers" \
+    -p "$p_wall" \
     -theme "$ROFI_THEME" \
     -show-icons \
     -markup-rows \

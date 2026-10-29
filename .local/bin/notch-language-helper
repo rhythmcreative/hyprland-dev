@@ -14,6 +14,7 @@ import sys
 import json
 import re
 import socket
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -394,6 +395,13 @@ def switch_layout(target):
         target_code = target.strip().lower()
         if target_code in layout_codes:
             target_idx = layout_codes.index(target_code)
+        else:
+            add_layout(target_code)
+            kb = get_primary_keyboard()
+            layouts_raw = (kb.get("layout", "us") if kb else "us") or "us"
+            layout_codes = [c.strip().lower() for c in layouts_raw.split(",") if c.strip()]
+            if target_code in layout_codes:
+                target_idx = layout_codes.index(target_code)
 
     if target_idx < 0 or target_idx >= len(layout_codes):
         target_idx = 0
@@ -533,75 +541,10 @@ def set_user_locale(loc):
 
     ensure_locale_generated(clean_loc)
 
-    env_dir = Path.home() / ".config/environment.d"
-    env_dir.mkdir(parents=True, exist_ok=True)
-    env_file = env_dir / "10-locale.conf"
-    env_file.write_text(f'LANG="{clean_loc}"\nLC_MESSAGES="{clean_loc}"\n', encoding="utf-8")
-
-    try:
-        profile_file = Path.home() / ".profile"
-        content = profile_file.read_text(encoding="utf-8") if profile_file.exists() else ""
-        lines = [l for l in content.splitlines() if not l.startswith("export LANG=") and not l.startswith("export LC_MESSAGES=")]
-        lines.append(f'export LANG="{clean_loc}"')
-        lines.append(f'export LC_MESSAGES="{clean_loc}"')
-        profile_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    except Exception:
-        pass
-
-    # Save to rhythm and omarchy language files
-    lang_code = clean_loc.split("_")[0].split(".")[0].lower()
-    for cfg_dir in [Path.home() / ".config/rhythm", Path.home() / ".config/omarchy"]:
+    rhythm_lang = shutil.which("rhythm-language") or str(Path.home() / ".local/bin/rhythm-language")
+    if os.path.exists(rhythm_lang):
         try:
-            cfg_dir.mkdir(parents=True, exist_ok=True)
-            (cfg_dir / "language").write_text(f"{lang_code}\n", encoding="utf-8")
-        except Exception:
-            pass
-
-    uwsm_dir = Path.home() / ".config/uwsm/env.d"
-    try:
-        uwsm_dir.mkdir(parents=True, exist_ok=True)
-        (uwsm_dir / "50-rhythm-language").write_text(f'export LANG="{clean_loc}"\nexport LC_MESSAGES="{clean_loc}"\n', encoding="utf-8")
-    except Exception:
-        pass
-
-    hypr_eval(f'hl.env("LANG", "{clean_loc}", true)')
-    try:
-        subprocess.run(["hyprctl", "setenv", "LANG", clean_loc], capture_output=True, timeout=1)
-    except Exception:
-        pass
-
-    try:
-        label = next((l["label"] for l in POPULAR_LOCALES if l["locale"] == clean_loc), clean_loc)
-        t_title = subprocess.check_output(["rhythm-i18n", "notif_lang_title", "Language"], text=True).strip() if shutil.which("rhythm-i18n") else "Language"
-        subprocess.run(["notify-send", "-a", "Language Settings", "-i", "preferences-desktop-locale", t_title, f"{label}"], capture_output=True, timeout=2)
-    except Exception:
-        pass
-
-    # Auto-add matching keyboard layout if available
-    lang_code = clean_loc.split("_")[0].split(".")[0].lower()
-    locale_layout_map = {
-        "es": "es", "en": "us", "fr": "fr", "de": "de", "it": "it",
-        "pt": "pt", "ru": "ru", "ja": "jp", "zh": "cn", "cmn": "cn",
-        "ko": "kr", "ar": "ara", "tr": "tr", "pl": "pl", "nl": "nl",
-        "sv": "se", "no": "no", "nb": "no", "nn": "no", "da": "dk",
-        "fi": "fi", "el": "gr", "cs": "cz", "ro": "ro", "hu": "hu",
-        "uk": "ua", "he": "il", "bg": "bg", "sk": "sk", "hr": "hr",
-        "sl": "si", "et": "ee", "lv": "lv", "lt": "lt", "ca": "es",
-        "vi": "vn", "th": "th", "id": "us", "ms": "us", "fil": "us",
-        "hi": "in", "bn": "bd", "ur": "pk", "fa": "ir", "sw": "us",
-        "is": "is", "ga": "ie", "uz": "uz", "si": "lk", "ta": "lk"
-    }
-    match_lay = locale_layout_map.get(lang_code)
-    if match_lay:
-        try:
-            kb = get_primary_keyboard()
-            layouts_raw = (kb.get("layout", "us") if kb else "us") or "us"
-            curr_codes = [c.strip().lower() for c in layouts_raw.split(",") if c.strip()]
-            if match_lay not in curr_codes:
-                curr_codes.append(match_lay)
-                new_str = ",".join(curr_codes)
-                hypr_eval(f'hl.config({{ input = {{ kb_layout = "{new_str}" }} }})')
-                persist_hyprland_config(new_layouts_str=new_str)
+            subprocess.run([rhythm_lang, "set", clean_loc], timeout=15)
         except Exception:
             pass
 
@@ -623,14 +566,6 @@ def set_system_locale(loc):
         pass
 
     set_user_locale(clean_loc)
-
-    try:
-        label = next((l["label"] for l in POPULAR_LOCALES if l["locale"] == clean_loc), clean_loc)
-        t_title = subprocess.check_output(["rhythm-i18n", "notif_lang_title", "Language"], text=True).strip() if shutil.which("rhythm-i18n") else "Language"
-        subprocess.run(["notify-send", "-a", "Language Settings", "-i", "preferences-desktop-locale", t_title, f"{label} (localectl)"], capture_output=True, timeout=2)
-    except Exception:
-        pass
-
     print(json.dumps({"status": "system_locale_updated", "locale": clean_loc}))
 
 def notify_quickshell():
@@ -698,6 +633,8 @@ def main():
 
         # 1. Primary curated locales (51 from locales.json)
         loc_file = Path.home() / ".config/rhythm/i18n/locales.json"
+        if not loc_file.exists():
+            loc_file = Path.home() / "hyprland/.config/rhythm/i18n/locales.json"
         if loc_file.exists():
             try:
                 data = json.loads(loc_file.read_text(encoding="utf-8"))

@@ -38,9 +38,14 @@ STATUS_JSON=$(gpu-profile status --json 2>/dev/null || true)
 IGPU_NAME=$(echo "$STATUS_JSON" | jq -r '.igpu_name // "Integrated"' 2>/dev/null)
 DGPU_NAME=$(echo "$STATUS_JSON" | jq -r '.dgpu_name // "Dedicated"' 2>/dev/null)
 
-OPT_HYBRID="󰢮  Hybrid (Auto)        - $IGPU_NAME desktop + $DGPU_NAME on-demand"
-OPT_INTEGRATED="󰌢  Integrated Only      - $IGPU_NAME only (Power saving & battery)"
-OPT_DEDICATED="󰢮  Dedicated Only       - $DGPU_NAME primary (Maximum performance)"
+L_PROFILE=$(rhythm-i18n hypr_gpu_profile "Graphics Profile")
+L_HYBRID=$(rhythm-i18n hypr_gpu_hybrid "Hybrid")
+L_INTEGRATED=$(rhythm-i18n hypr_gpu_integrated "Integrated")
+L_DEDICATED=$(rhythm-i18n hypr_gpu_dedicated "Dedicated")
+
+OPT_HYBRID="󰢮  $L_HYBRID (Auto)        - $IGPU_NAME desktop + $DGPU_NAME on-demand [action:hybrid]"
+OPT_INTEGRATED="󰌢  $L_INTEGRATED Only      - $IGPU_NAME only (Power saving) [action:integrated]"
+OPT_DEDICATED="󰢮  $L_DEDICATED Only       - $DGPU_NAME primary (Maximum performance) [action:dedicated]"
 
 case "$CURRENT_MODE" in
     integrated) OPT_INTEGRATED="✓ $OPT_INTEGRATED" ;;
@@ -51,14 +56,15 @@ esac
 MENU_ITEMS="${OPT_HYBRID}\n${OPT_INTEGRATED}\n${OPT_DEDICATED}"
 
 THEME_FILE="$HOME/.config/rofi/settings.rasi"
-ROFI_ARGS=(-dmenu -i -p "󰢮 Graphics Profile")
+ROFI_ARGS=(-dmenu -i -p "󰢮 $L_PROFILE")
 [ -f "$THEME_FILE" ] && ROFI_ARGS+=(-theme "$THEME_FILE")
+[ -n "$ACTIVE_MON" ] && ROFI_ARGS+=(-m "$ACTIVE_MON")
 
-CHOSEN=$(echo -e "$MENU_ITEMS" | rofi "${ROFI_ARGS[@]}")
+CHOSEN=$(echo -e "$MENU_ITEMS" | rofi-themed "${ROFI_ARGS[@]}")
 [ -z "$CHOSEN" ] && exit 0
 
 case "$CHOSEN" in
-    *Integrated*) gpu-profile set integrated ;;
-    *Dedicated*)  gpu-profile set dedicated ;;
-    *Hybrid*)     gpu-profile set hybrid ;;
+    *"[action:integrated]"*|*Integrated*|*Integrad*) gpu-profile set integrated ;;
+    *"[action:dedicated]"*|*Dedicated*|*Dedicad*)   gpu-profile set dedicated ;;
+    *"[action:hybrid]"*|*Hybrid*|*Híbrid*|*Hibrid*) gpu-profile set hybrid ;;
 esac

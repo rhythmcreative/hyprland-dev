@@ -65,6 +65,10 @@ generados_por_herramientas() {
         .config/gtk-4.0/nm-applet-waybar.css) return 0 ;;
         .config/gtk-4.0/settings.ini)          return 0 ;;
         .config/mako/config)                   return 0 ;;
+        .config/rhythm/language)               return 0 ;;
+        .config/hypr/hyprlock-locale.conf)     return 0 ;;
+        .config/environment.d/10-locale.conf)  return 0 ;;
+        .config/uwsm/env.d/50-rhythm-language) return 0 ;;
         .cache/wal/*)                          return 0 ;;
         .local/bin/*)                          return 0 ;;
         *) return 1 ;;

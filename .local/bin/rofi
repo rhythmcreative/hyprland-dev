@@ -1,0 +1,6 @@
+#!/bin/bash
+# Rofi safety wrapper for UTF-8 locale resilience across all languages
+if [ -n "$(locale 2>&1 >/dev/null)" ] || ! /usr/bin/rofi -v >/dev/null 2>&1; then
+    export LC_ALL="C.UTF-8"
+fi
+exec /usr/bin/rofi "$@"
