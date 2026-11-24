@@ -326,6 +326,17 @@ PanelWindow {
                 border.color: Qt.rgba(0, 0, 0, 0.45)
                 border.width: 1
 
+                function reportAnchor() {
+                    if (!barWin.islandRoot || typeof barWin.islandRoot.setSysBoxAnchor !== "function") return
+                    const scrName = barWin.screenName || ((barWin.screen && barWin.screen.name) ? barWin.screen.name : "")
+                    if (!scrName) return
+                    const pos = sysBox.mapToItem(null, 0, 0)
+                    barWin.islandRoot.setSysBoxAnchor(scrName, Math.round(pos.x), Math.round(pos.y), Math.round(sysBox.width), Math.round(sysBox.height))
+                }
+                Component.onCompleted: Qt.callLater(reportAnchor)
+                onXChanged: reportAnchor()
+                onWidthChanged: reportAnchor()
+
                 scale: (cpuMouse.pressed || memMouse.pressed || cpuTempMouse.pressed || gpuTempMouse.pressed) ? 0.93 : 1.0
                 Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
 

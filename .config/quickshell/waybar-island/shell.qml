@@ -580,6 +580,20 @@ ShellRoot {
     property var privacyState: ({ mic: false, cam: false })
     property var sysStats: ({ cpu_pct: 0, ram_used: "0G", ram_total: "0G", ram_pct: 0, disk_used: "0G", disk_pct: 0 })
     property var sysMonData: null
+    property var sysBoxAnchors: ({})
+
+    function setSysBoxAnchor(screenName, x, y, w, h) {
+        if (!screenName || w <= 0) return
+        const prev = root.sysBoxAnchors[screenName]
+        if (prev && prev.x === x && prev.y === y && prev.w === w && prev.h === h) return
+        let next = Object.assign({}, root.sysBoxAnchors)
+        next[screenName] = { x: x, y: y, w: w, h: h }
+        root.sysBoxAnchors = next
+    }
+
+    function refreshSysMon() {
+        if (!sysMonProc.running) sysMonProc.running = true
+    }
 
     // Baterias. battery-info devuelve count 0 y devices vacio si esta maquina no
     // tiene ninguna, y la seccion se oculta con visible en vez de con un texto de
@@ -2158,9 +2172,10 @@ ShellRoot {
             if [ ! -f \"$nv_err_flag\" ] && command -v nvidia-smi >/dev/null 2>&1; then
                 nv_active=0
                 for dev in /sys/bus/pci/devices/*; do
-                    [ -r \"$dev/vendor\" ] || continue
+                    [ -r \"$dev/vendor\" ] && [ -r \"$dev/class\" ] || continue
                     read -r ven < \"$dev/vendor\"
-                    if [ \"$ven\" = \"0x10de\" ] && [ -r \"$dev/power/runtime_status\" ]; then
+                    read -r cls < \"$dev/class\"
+                    if [ \"$ven\" = \"0x10de\" ] && [[ \"$cls\" == 0x03* ]] && [ -r \"$dev/power/runtime_status\" ]; then
                         read -r rst < \"$dev/power/runtime_status\"
                         [ \"$rst\" = \"active\" ] && nv_active=1 && break
                     fi
@@ -2172,6 +2187,7 @@ ShellRoot {
                     else
                         nv_t=${nv_out%%$'\n'*}
                         nv_t=${nv_t// /}
+                        nv_t=${nv_t%%.*}
                         [ \"${nv_t:-0}\" -gt 0 ] 2>/dev/null && gpu_t=\"${nv_t}°C\"
                     fi
                 fi
@@ -2568,11 +2584,13 @@ ShellRoot {
 
         }
 
-        // Dimmer background when expanded
+        // Dimmer background when expanded (leaves Waybar un-dimmed when mini-extension is open)
         Rectangle {
             id: dimmer
+            readonly property bool sysMonOnly: islandWin.sysMonExpanded && !islandWin.expanded && !islandWin.langExpanded
             anchors.fill: parent
-            color: Qt.rgba(0, 0, 0, 0.45)
+            anchors.topMargin: sysMonOnly ? 40 : 0
+            color: sysMonOnly ? Qt.rgba(0, 0, 0, 0.22) : Qt.rgba(0, 0, 0, 0.45)
             opacity: (islandWin.expanded || islandWin.sysMonExpanded || islandWin.langExpanded) ? 1.0 : 0.0
             visible: opacity > 0
             Behavior on opacity {
@@ -2580,10 +2598,11 @@ ShellRoot {
             }
         }
 
-        // Background click catcher to close
+        // Background click catcher to close (keeps Waybar directly clickable when mini-extension is open)
         Item {
             id: cazaClics
             anchors.fill: parent
+            anchors.topMargin: (islandWin.sysMonExpanded && !islandWin.expanded && !islandWin.langExpanded) ? 40 : 0
             enabled: islandWin.expanded || islandWin.sysMonExpanded || islandWin.langExpanded
 
             FocusScope {
@@ -2610,809 +2629,114 @@ ShellRoot {
             }
         }
 
-        // Corner Dynamic Island: Real-Time System Monitor (htop style)
+        // Mini-Extension Popover: System Monitor emerging directly below the Waybar telemetry pill
         Item {
             id: sysMonCapsule
-            anchors.top: parent.top
-            anchors.left: parent.left
-            width: islandWin.sysMonExpanded ? 600 : 200
-            height: islandWin.sysMonExpanded ? 670 : 0
+            readonly property var anchorRect: (root.sysBoxAnchors && modelData && root.sysBoxAnchors[modelData.name])
+                                              ? root.sysBoxAnchors[modelData.name]
+                                              : ({ x: 55, y: 5, w: 368, h: 30 })
+            readonly property int targetW: Math.max(456, anchorRect.w)
+            readonly property int gpuCount: (root.sysMonData && root.sysMonData.gpu && root.sysMonData.gpu.devices)
+                                            ? Math.min(2, root.sysMonData.gpu.devices.length)
+                                            : 0
+            readonly property int targetH: 432 + (gpuCount > 0 ? (14 + gpuCount * 22) : 0)
+            readonly property int targetX: Math.max(7, Math.min(anchorRect.x, islandWin.width - targetW - 7))
+            readonly property int restY: anchorRect.y + anchorRect.h + 6
+
+            x: targetX
+            y: islandWin.sysMonExpanded ? restY : (anchorRect.y + anchorRect.h)
+            width: islandWin.sysMonExpanded ? targetW : anchorRect.w
+            height: islandWin.sysMonExpanded ? targetH : 0
             clip: true
 
             opacity: islandWin.sysMonExpanded ? 1.0 : 0.0
             visible: opacity > 0
 
+            Behavior on y {
+                NumberAnimation {
+                    duration: islandWin.sysMonExpanded ? 260 : 170
+                    easing.type: Easing.OutCubic
+                }
+            }
+
             Behavior on width {
                 NumberAnimation {
-                    duration: islandWin.sysMonExpanded ? 340 : 220
-                    easing.type: islandWin.sysMonExpanded ? Easing.OutBack : Easing.InCubic
-                    easing.overshoot: 1.07
+                    duration: islandWin.sysMonExpanded ? 280 : 180
+                    easing.type: Easing.OutCubic
                 }
             }
 
             Behavior on height {
                 NumberAnimation {
-                    duration: islandWin.sysMonExpanded ? 360 : 220
-                    easing.type: islandWin.sysMonExpanded ? Easing.OutBack : Easing.InCubic
-                    easing.overshoot: 1.05
+                    duration: islandWin.sysMonExpanded ? 300 : 180
+                    easing.type: islandWin.sysMonExpanded ? Easing.OutCubic : Easing.InCubic
                 }
             }
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: islandWin.sysMonExpanded ? 240 : 180
+                    duration: islandWin.sysMonExpanded ? 190 : 140
                     easing.type: Easing.OutCubic
                 }
             }
 
-            // Apple Dynamic Island corner silhouette fused to top-left screen edge
-            SiluetaEsquina {
+            // Crisp floating extension surface matching Waybar pill language
+            Rectangle {
                 anchors.fill: parent
-                ala: islandWin.sysMonExpanded ? 18 : 6
-                cuerpoRadio: islandWin.sysMonExpanded ? 24 : 10
-                relleno: root.colBg
-                bordeColor: "transparent"
-                bordeAncho: 0
+                radius: 10
+                color: root.colBg
+                border.color: Qt.rgba(0, 0, 0, 0.55)
+                border.width: 1
 
-                Behavior on ala {
-                    NumberAnimation {
-                        duration: islandWin.sysMonExpanded ? 320 : 200
-                        easing.type: Easing.OutCubic
-                    }
-                }
-                Behavior on cuerpoRadio {
-                    NumberAnimation {
-                        duration: islandWin.sysMonExpanded ? 320 : 200
-                        easing.type: Easing.OutCubic
-                    }
+                // Subtle 1px inner hairline highlight for crisp separation on dark wallpapers
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: 9
+                    color: "transparent"
+                    border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.09)
+                    border.width: 1
                 }
             }
 
-            // Intercept clicks inside the capsule so they do not hit cazaClics
+            // Intercept clicks inside the extension so they do not hit cazaClics
             MouseArea {
                 anchors.fill: parent
             }
 
-            // Inner content with coordinated slide, scale, and fade choreography
+            // Inner content with crisp downward reveal from the bar pill
             Item {
                 id: sysMonContentArea
                 anchors.fill: parent
                 anchors.topMargin: 12
+                anchors.bottomMargin: 12
                 anchors.leftMargin: 14
-                anchors.rightMargin: 24
-                anchors.bottomMargin: 24
+                anchors.rightMargin: 14
 
                 opacity: islandWin.sysMonExpanded ? 1.0 : 0.0
-                transform: [
-                    Translate {
-                        y: islandWin.sysMonExpanded ? 0 : -22
-                        Behavior on y {
-                            NumberAnimation {
-                                duration: islandWin.sysMonExpanded ? 320 : 180
-                                easing.type: Easing.OutCubic
-                            }
-                        }
-                    },
-                    Scale {
-                        origin.x: 0
-                        origin.y: 0
-                        xScale: islandWin.sysMonExpanded ? 1.0 : 0.94
-                        yScale: islandWin.sysMonExpanded ? 1.0 : 0.94
-                        Behavior on xScale {
-                            NumberAnimation {
-                                duration: islandWin.sysMonExpanded ? 320 : 180
-                                easing.type: Easing.OutCubic
-                            }
-                        }
-                        Behavior on yScale {
-                            NumberAnimation {
-                                duration: islandWin.sysMonExpanded ? 320 : 180
-                                easing.type: Easing.OutCubic
-                            }
+                transform: Translate {
+                    y: islandWin.sysMonExpanded ? 0 : -10
+                    Behavior on y {
+                        NumberAnimation {
+                            duration: islandWin.sysMonExpanded ? 260 : 140
+                            easing.type: Easing.OutCubic
                         }
                     }
-                ]
+                }
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: islandWin.sysMonExpanded ? 240 : 160
+                        duration: islandWin.sysMonExpanded ? 210 : 120
                         easing.type: Easing.OutCubic
                     }
                 }
 
-                ColumnLayout {
+                SysMonPanel {
                     anchors.fill: parent
-                    spacing: 10
-
-                // 1. Header (Icon, Title, Subtitle, htop button, Refresh, Close)
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
-
-                    Rectangle {
-                        width: 36; height: 36; radius: 18
-                        color: Qt.rgba(root.colAccent.r, root.colAccent.g, root.colAccent.b, 0.15)
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰻠"
-                            color: root.colAccent
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 18
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 1
-
-                        Text {
-                            text: root.t("sysmon_title", "System Monitor (htop)")
-                            color: root.colFg
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 13
-                            font.weight: Font.Bold
-                        }
-
-                        Text {
-                            text: (root.sysMonData?.cpu?.model || root.t("sysmon_processor", "Processor")) + " · " + root.t("sysmon_uptime", "Uptime") + ": " + (root.sysMonData?.system?.uptime || "0m")
-                            color: root.colMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    // Boton lanzar htop en terminal
-                    Rectangle {
-                        height: 28
-                        implicitWidth: htopRow.implicitWidth + 16
-                        radius: 14
-                        color: htopHover.containsMouse ? root.colSurfaceHover : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                        border.width: 1
-
-                        RowLayout {
-                            id: htopRow
-                            anchors.centerIn: parent
-                            spacing: 6
-                            Text {
-                                text: "󰆍"
-                                color: root.colAccent
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 12
-                            }
-                            Text {
-                                text: root.t("sysmon_cli", "htop CLI")
-                                color: root.colFg
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                            }
-                        }
-
-                        MouseArea {
-                            id: htopHover
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                islandWin.sysMonExpanded = false
-                                root.runCmd("kitty -e sh -c 'command -v htop >/dev/null 2>&1 && exec htop || exec btop'")
-                            }
-                        }
-                    }
-
-                    // Boton Refrescar
-                    Rectangle {
-                        width: 28; height: 28; radius: 14
-                        color: sysMonRefHover.containsMouse ? root.colSurfaceHover : "transparent"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰑐"
-                            color: root.colMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 13
-                        }
-                        MouseArea {
-                            id: sysMonRefHover
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: sysMonProc.running = true
-                        }
-                    }
-
-                    // Boton Cerrar
-                    Rectangle {
-                        width: 28; height: 28; radius: 14
-                        color: sysMonCloseHover.containsMouse ? Qt.rgba(224/255, 108/255, 117/255, 0.2) : "transparent"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "󰅖"
-                            color: sysMonCloseHover.containsMouse ? "#e06c75" : root.colMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 13
-                        }
-                        MouseArea {
-                            id: sysMonCloseHover
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: islandWin.sysMonExpanded = false
-                        }
-                    }
-                }
-
-                // 2. Cuadrícula de 4 Tarjetas de Métricas (CPU, RAM, Swap, Disk)
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    // CPU Metric Card
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 64
-                        radius: 12
-                        color: root.colSurface
-                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                        border.width: 1
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 4
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Text { text: "󰻠"; color: root.colAccent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                Text { text: "CPU"; color: root.colFg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold }
-                                Item { Layout.fillWidth: true }
-                                Text {
-                                    text: (root.sysMonData?.cpu?.total_pct ?? 0) + "%"
-                                    color: (root.sysMonData?.cpu?.total_pct ?? 0) > 80 ? "#e06c75" : ((root.sysMonData?.cpu?.total_pct ?? 0) > 50 ? "#e5c07b" : root.colAccent)
-                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true; height: 4; radius: 2
-                                color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
-                                Rectangle {
-                                    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                    width: Math.max(0, Math.min(parent.width, parent.width * ((root.sysMonData?.cpu?.total_pct ?? 0) / 100.0)))
-                                    radius: 2
-                                    color: (root.sysMonData?.cpu?.total_pct ?? 0) > 80 ? "#e06c75" : ((root.sysMonData?.cpu?.total_pct ?? 0) > 50 ? "#e5c07b" : root.colAccent)
-                                    Behavior on width { NumberAnimation { duration: 200 } }
-                                }
-                            }
-
-                            Text {
-                                text: ((root.sysMonData?.cpu?.freq_ghz ?? 0) > 0 ? (root.sysMonData.cpu.freq_ghz + "GHz · ") : "") + (root.sysMonData?.cpu?.temp_c ?? 0) + "°C"
-                                color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; elide: Text.ElideRight
-                            }
-                        }
-                    }
-
-                    // RAM Metric Card
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 64
-                        radius: 12
-                        color: root.colSurface
-                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                        border.width: 1
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 4
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Text { text: "󰘚"; color: root.colAccent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                Text { text: "RAM"; color: root.colFg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold }
-                                Item { Layout.fillWidth: true }
-                                Text {
-                                    text: (root.sysMonData?.ram?.pct ?? 0) + "%"
-                                    color: (root.sysMonData?.ram?.pct ?? 0) > 85 ? "#e06c75" : root.colAccent
-                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true; height: 4; radius: 2
-                                color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
-                                Rectangle {
-                                    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                    width: Math.max(0, Math.min(parent.width, parent.width * ((root.sysMonData?.ram?.pct ?? 0) / 100.0)))
-                                    radius: 2; color: root.colAccent
-                                    Behavior on width { NumberAnimation { duration: 200 } }
-                                }
-                            }
-
-                            Text {
-                                text: root.sysMonData?.ram?.str || "0G / 0G"
-                                color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; elide: Text.ElideRight
-                            }
-                        }
-                    }
-
-                    // SWAP Metric Card
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 64
-                        radius: 12
-                        color: root.colSurface
-                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                        border.width: 1
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 4
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Text { text: "󰾴"; color: root.colAccent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                Text { text: "Swap"; color: root.colFg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold }
-                                Item { Layout.fillWidth: true }
-                                Text {
-                                    text: (root.sysMonData?.swap?.pct ?? 0) + "%"
-                                    color: root.colAccent
-                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true; height: 4; radius: 2
-                                color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
-                                Rectangle {
-                                    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                    width: Math.max(0, Math.min(parent.width, parent.width * ((root.sysMonData?.swap?.pct ?? 0) / 100.0)))
-                                    radius: 2; color: root.colAccent
-                                    Behavior on width { NumberAnimation { duration: 200 } }
-                                }
-                            }
-
-                            Text {
-                                text: root.sysMonData?.swap?.str || "0G / 0G"
-                                color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; elide: Text.ElideRight
-                            }
-                        }
-                    }
-
-                    // Disk Metric Card
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 64
-                        radius: 12
-                        color: root.colSurface
-                        border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                        border.width: 1
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            spacing: 4
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Text { text: "󰋊"; color: root.colAccent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-                                Text { text: "SSD /"; color: root.colFg; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold }
-                                Item { Layout.fillWidth: true }
-                                Text {
-                                    text: (root.sysMonData?.disk?.pct ?? 0) + "%"
-                                    color: root.colAccent
-                                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 10; font.weight: Font.Bold
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.fillWidth: true; height: 4; radius: 2
-                                color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
-                                Rectangle {
-                                    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                    width: Math.max(0, Math.min(parent.width, parent.width * ((root.sysMonData?.disk?.pct ?? 0) / 100.0)))
-                                    radius: 2; color: root.colAccent
-                                    Behavior on width { NumberAnimation { duration: 200 } }
-                                }
-                            }
-
-                            Text {
-                                text: (root.sysMonData?.disk?.used_gb ?? 0) + "G / " + (root.sysMonData?.disk?.total_gb ?? 0) + "G"
-                                color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; elide: Text.ElideRight
-                            }
-                        }
-                    }
-                }
-
-                // 3. Matriz de Núcleos CPU (Se adapta a cualquier cantidad de núcleos/hilos)
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: {
-                        const count = root.sysMonData?.cpu?.cores_count ?? 16
-                        const cols = count > 16 ? 6 : (count <= 4 ? 2 : 4)
-                        const rows = Math.ceil(count / cols)
-                        return Math.max(52, Math.min(100, 28 + rows * 13))
-                    }
-                    radius: 12
-                    color: root.colSurface
-                    border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                    border.width: 1
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 4
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Text {
-                                text: root.t("sysmon_cores", "CPU Cores Activity")
-                                color: root.colFg
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                            }
-                            Item { Layout.fillWidth: true }
-                            Text {
-                                text: (root.sysMonData?.cpu?.cores_count ?? 16) + " " + root.t("sysmon_threads_active", "Threads Active")
-                                color: root.colMuted
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 8
-                            }
-                        }
-
-                        // Matriz adaptativa según cantidad de núcleos
-                        GridLayout {
-                            Layout.fillWidth: true
-                            columns: (root.sysMonData?.cpu?.cores_count ?? 16) > 16 ? 6 : ((root.sysMonData?.cpu?.cores_count ?? 16) <= 4 ? 2 : 4)
-                            rowSpacing: 3
-                            columnSpacing: 8
-
-                            Repeater {
-                                model: root.sysMonData?.cpu?.cores || []
-                                delegate: RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 4
-
-                                    Text {
-                                        text: (modelData.id + 1).toString().padStart(2, '0')
-                                        color: root.colMuted
-                                        font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 7
-                                        Layout.preferredWidth: 14
-                                    }
-
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        height: 5
-                                        radius: 2.5
-                                        color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.1)
-
-                                        Rectangle {
-                                            anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                            width: Math.max(0, Math.min(parent.width, parent.width * (modelData.pct / 100.0)))
-                                            radius: 2.5
-                                            color: modelData.pct > 80 ? "#e06c75" : (modelData.pct > 50 ? "#e5c07b" : root.colAccent)
-                                            Behavior on width { NumberAnimation { duration: 150 } }
-                                        }
-                                    }
-
-                                    Text {
-                                        text: modelData.pct + "%"
-                                        color: modelData.pct > 50 ? root.colFg : root.colMuted
-                                        font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 7
-                                        Layout.preferredWidth: 22
-                                        horizontalAlignment: Text.AlignRight
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 4. Barra de GPU Dinámica (Se adapta a cualquier GPU: NVIDIA, AMD, Intel, integrada o dedicada)
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 34
-                    radius: 10
-                    color: root.colSurface
-                    border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 10
-                        anchors.rightMargin: 10
-                        spacing: 8
-
-                        Text { text: "󰢮"; color: root.colAccent; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
-                        Text {
-                            text: root.t("sysmon_gpu", "GPU:")
-                            color: root.colFg
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                        }
-
-                        Repeater {
-                            model: root.sysMonData?.gpu?.devices || []
-                            delegate: RowLayout {
-                                spacing: 4
-                                Rectangle {
-                                    height: 22
-                                    implicitWidth: gpuPillRow.implicitWidth + 14
-                                    radius: 11
-                                    color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.05)
-                                    border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                                    border.width: 1
-
-                                    RowLayout {
-                                        id: gpuPillRow
-                                        anchors.centerIn: parent
-                                        spacing: 5
-
-                                        Text {
-                                            text: modelData.short_name || modelData.name || "GPU"
-                                            color: root.colFg
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                            font.weight: Font.Bold
-                                        }
-
-                                        Text {
-                                            visible: (modelData.temp_c ?? 0) > 0
-                                            text: "· " + modelData.temp_c + "°C"
-                                            color: (modelData.temp_c ?? 0) > 80 ? "#e06c75" : root.colMuted
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                        }
-
-                                        Text {
-                                            visible: (modelData.util_pct ?? 0) > 0 || modelData.has_util
-                                            text: "· " + modelData.util_pct + "% " + root.t("sysmon_util", "Util")
-                                            color: root.colMuted
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                        }
-
-                                        Text {
-                                            visible: !!modelData.vram_str
-                                            text: "· " + modelData.vram_str
-                                            color: root.colMuted
-                                            font.family: "JetBrainsMono Nerd Font"
-                                            font.pixelSize: 8
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Text {
-                            visible: (root.sysMonData?.gpu?.devices?.length ?? 0) === 0
-                            text: root.t("sysmon_integrated_gpu", "Standard Integrated Graphics")
-                            color: root.colMuted
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 8
-                        }
-
-                        Item { Layout.fillWidth: true }
-                    }
-                }
-
-                // 5. Procesos en Tiempo Real (htop table)
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    spacing: 6
-
-                    // Cabecera de Procesos + Selector de Pestañas (CPU / RAM)
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Text {
-                            text: root.t("sysmon_top_proc", "Top Processes")
-                            color: root.colFg
-                            font.family: "JetBrainsMono Nerd Font"
-                            font.pixelSize: 11
-                            font.weight: Font.Bold
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        // Pill Top CPU
-                        Rectangle {
-                            height: 22
-                            implicitWidth: 64
-                            radius: 11
-                            color: islandWin.sysMonProcTab === "cpu" ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Text {
-                                anchors.centerIn: parent
-                                text: root.t("sysmon_top_cpu", "Top CPU")
-                                color: islandWin.sysMonProcTab === "cpu" ? root.colBg : root.colFg
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 8
-                                font.weight: Font.Bold
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: islandWin.sysMonProcTab = "cpu"
-                            }
-                        }
-
-                        // Pill Top Memory
-                        Rectangle {
-                            height: 22
-                            implicitWidth: 68
-                            radius: 11
-                            color: islandWin.sysMonProcTab === "mem" ? root.colAccent : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.08)
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Text {
-                                anchors.centerIn: parent
-                                text: root.t("sysmon_top_mem", "Top Memory")
-                                color: islandWin.sysMonProcTab === "mem" ? root.colBg : root.colFg
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 8
-                                font.weight: Font.Bold
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: islandWin.sysMonProcTab = "mem"
-                            }
-                        }
-                    }
-
-                    // Encabezados de columnas
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 8
-                        spacing: 8
-
-                        Text { text: root.t("sysmon_pid", "PID"); color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; Layout.preferredWidth: 48 }
-                        Text { text: root.t("sysmon_user", "USER"); color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; Layout.preferredWidth: 50 }
-                        Text { text: root.t("sysmon_name", "NAME"); color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; Layout.fillWidth: true }
-                        Text { text: "CPU"; color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; Layout.preferredWidth: 42; horizontalAlignment: Text.AlignRight }
-                        Text { text: "RAM"; color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; Layout.preferredWidth: 70; horizontalAlignment: Text.AlignRight }
-                        Text { text: root.t("sysmon_kill", "KILL"); color: root.colMuted; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 8; Layout.preferredWidth: 28; horizontalAlignment: Text.AlignCenter }
-                    }
-
-                    // Lista de 6 Procesos
-                    Repeater {
-                        model: (islandWin.sysMonProcTab === "cpu" ? root.sysMonData?.procs_cpu : root.sysMonData?.procs_mem) || []
-                        delegate: Rectangle {
-                            Layout.fillWidth: true
-                            height: 28
-                            radius: 7
-                            color: procRowHover.containsMouse ? root.colSurfaceHover : root.colSurface
-                            border.color: Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.04)
-                            border.width: 1
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 6
-                                spacing: 8
-
-                                // PID
-                                Text {
-                                    text: modelData.pid
-                                    color: root.colMuted
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 8
-                                    Layout.preferredWidth: 48
-                                }
-
-                                // USER
-                                Text {
-                                    text: modelData.user || "user"
-                                    color: root.colMuted
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 8
-                                    elide: Text.ElideRight
-                                    Layout.preferredWidth: 50
-                                }
-
-                                // Process Name
-                                Text {
-                                    text: modelData.name
-                                    color: root.colFg
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-
-                                // CPU %
-                                Text {
-                                    text: modelData.cpu + "%"
-                                    color: modelData.cpu > 25 ? "#e06c75" : (modelData.cpu > 10 ? "#e5c07b" : root.colAccent)
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                    Layout.preferredWidth: 42
-                                    horizontalAlignment: Text.AlignRight
-                                }
-
-                                // RAM (MB/GB)
-                                Text {
-                                    text: modelData.mem_str || (modelData.mem + "%")
-                                    color: root.colMuted
-                                    font.family: "JetBrainsMono Nerd Font"
-                                    font.pixelSize: 8
-                                    Layout.preferredWidth: 70
-                                    horizontalAlignment: Text.AlignRight
-                                }
-
-                                // Botón Kill
-                                Rectangle {
-                                    Layout.preferredWidth: 22
-                                    height: 22
-                                    radius: 11
-                                    color: killBtnHover.containsMouse ? Qt.rgba(224/255, 108/255, 117/255, 0.25) : "transparent"
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: "󰅖"
-                                        color: killBtnHover.containsMouse ? "#e06c75" : Qt.rgba(root.colFg.r, root.colFg.g, root.colFg.b, 0.3)
-                                        font.family: "JetBrainsMono Nerd Font"
-                                        font.pixelSize: 10
-                                    }
-
-                                    MouseArea {
-                                        id: killBtnHover
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            root.runCmd("kill -15 " + modelData.pid)
-                                            sysMonProc.running = true
-                                        }
-                                    }
-                                }
-                            }
-
-                            MouseArea {
-                                id: procRowHover
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                propagateComposedEvents: true
-                            }
-                        }
-                    }
-                }
-
-                // 6. Pie de página (Kernel + Tip para cerrar)
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Text {
-                        text: root.t("sysmon_kernel", "Kernel: Linux") + " " + (root.sysMonData?.system?.kernel || "")
-                        color: root.colMuted
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 8
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    Text {
-                        text: root.t("sysmon_esc_close", "ESC or click outside to close")
-                        color: Qt.rgba(root.colMuted.r, root.colMuted.g, root.colMuted.b, 0.6)
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 8
-                    }
+                    rootRef: root
+                    winRef: islandWin
                 }
             }
         }
-    }
 
         // Corner Dynamic Island: Language & Keyboard Selector (fused to top and right borders)
         Item {
